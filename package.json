@@ -1,5 +1,5 @@
 {
-  "name": "zenn",
+  "name": "@mpyw/zenn",
   "version": "1.0.0",
   "description": "@mpyw's public zenn articles",
   "private": true,
