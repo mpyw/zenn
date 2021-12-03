@@ -1,0 +1,19 @@
+{
+  "name": "zenn",
+  "version": "1.0.0",
+  "description": "@mpyw's public zenn articles",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mpyw/zenn.git"
+  },
+  "keywords": [],
+  "author": "mpyw",
+  "bugs": {
+    "url": "https://github.com/mpyw/zenn/issues"
+  },
+  "homepage": "https://github.com/mpyw/zenn#readme",
+  "dependencies": {
+    "zenn-cli": "^0.1.99"
+  }
+}
