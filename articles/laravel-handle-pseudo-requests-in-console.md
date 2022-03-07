@@ -164,7 +164,7 @@ class IncomingRequestHandler
 
 ## 使い方
 
-Slack から Webhook としてリクエストされる Interactive Messages を捌く例
+Slack から Webhook としてリクエストされる Interactive Messages の疑似リクエストを取り扱う例
 
 ```php
 .
@@ -216,4 +216,32 @@ class DispatchCommand extends Command
         $this->handleJsonRequest('POST', '/slack/interactions', $json);
     }
 }
+```
+
+```bash
+php artisan playground:slack:interactions:dispatch '{
+  "token": "Nj2rfC2hU8mAfgaJLemZgO7H",
+  "callback_id": "chirp_message",
+  "type": "message_action",
+  "trigger_id": "13345224609.8534564800.6f8ab1f53e13d0cd15f96106292d5536",
+  "response_url": "https://hooks.slack.com/app-actions/T0MJR11A4/21974584944/yk1S9ndf35Q1flupVG5JbpM6",
+  "team": {
+    "id": "T0MJRM1A7",
+    "domain": "pandamonium",
+  },
+  "channel": {
+    "id": "D0LFFBKLZ",
+    "name": "cats"
+  },
+  "user": {
+    "id": "U0D15K92L",
+    "name": "dr_maomao"
+  },
+  "message": {
+    "type": "message",
+    "user": "U0MJRG1AL",
+    "ts": "1516229207.000133",
+    "text": "Smallest big cat! <https://youtube.com/watch?v=W86cTIoMv2U>"
+  }
+}'
 ```
