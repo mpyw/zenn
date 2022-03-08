@@ -25,7 +25,7 @@ published: true
     └── Console/
         └── Commands/
             └── Playground/
-                ├── HandlesIncomingRequests.php
+                ├── CreatesIncomingRequestHandler.php
                 └── IncomingRequestsHandler.php
 ```
 
@@ -54,30 +54,13 @@ trait HandlesIncomingRequests
     abstract public function getOutput();
 
     /**
-     * Content-Type: application/x-www-form-urlencoded のリクエストをハンドル
-     * （GET や HEAD の場合には，クエリストリングを付加した場合と同等）
-     *
-     * @phpstan-param 'GET'|'HEAD'|'POST'|'PUT'|'PATCH'|'DELETE' $method
      * @noinspection PhpUnhandledExceptionInspection
      */
-    public function handleQueryRequest(string $method, string $uri, string $query): void
+    public function createIncomingRequestHandler(): IncomingRequestHandler
     {
-        $this->getLaravel()
-            ->make(IncomingRequestHandler::class, ['output' => $this->getOutput()])
-            ->handleQueryRequest($method, $uri, $query);
-    }
-
-    /**
-     * application/json のリクエストをハンドル
-     *
-     * @phpstan-param 'POST'|'PUT'|'PATCH'|'DELETE' $method
-     * @noinspection PhpUnhandledExceptionInspection
-     */
-    public function handleJsonRequest(string $method, string $uri, string $json): void
-    {
-        $this->getLaravel()
-            ->make(IncomingRequestHandler::class, ['output' => $this->getOutput()])
-            ->handleJsonRequest($method, $uri, $json);
+        return $this
+            ->getLaravel()
+            ->make(IncomingRequestHandler::class, ['output' => $this->getOutput()]);
     }
 }
 ```
@@ -175,7 +158,7 @@ Slack から Webhook としてリクエストされる Interactive Messages の�
                 ├── Slack/
                 │   └── Interactions/
                 │       └── DispatchCommand.php
-                ├── HandlesIncomingRequests.php
+                ├── CreatesIncomingRequestHandler.php
                 └── IncomingRequestsHandler.php
 ```
 
@@ -213,7 +196,9 @@ class DispatchCommand extends Command
         $json = $this->argument('json');
         assert(is_string($json));
 
-        $this->handleJsonRequest('POST', '/slack/interactions', $json);
+        $this
+            ->createIncomingRequestHandler()
+            ->handleJsonRequest('POST', '/slack/interactions', $json);
     }
 }
 ```
@@ -227,7 +212,7 @@ php artisan playground:slack:interactions:dispatch '{
   "response_url": "https://hooks.slack.com/app-actions/T0MJR11A4/21974584944/yk1S9ndf35Q1flupVG5JbpM6",
   "team": {
     "id": "T0MJRM1A7",
-    "domain": "pandamonium",
+    "domain": "pandamonium"
   },
   "channel": {
     "id": "D0LFFBKLZ",
