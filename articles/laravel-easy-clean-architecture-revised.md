@@ -65,7 +65,7 @@ https://zenn.dev/mpyw/articles/ce7d09eb6d8117
 
 # アーキテクチャの提唱
 
-<!-- https://tree.nathanfriend.io/?s=(%27options!(%27fancy!true~fullPath!false~trailingSlash!true~rootDot!true)~source!(%27source!%27app9Console9*Commands0KernelXDomain0J0Qj*JV*J2JVJ2J6W-30Qj*3V*32*7V*72*36V3V327V7236V36W-5jYsjBLimitExceededY-QjBVB2*8V*82*56-B-B28V8256-N0Qsj*OV*N6XInfra0NjOsj*SlackOV*TwitterOV*FacebookOVGlobalConfigVN6VN6WV9Ys0HandlerXHttp0zsjJj*_*Z43j*Index4*_*Z45jBIndex4B_BZ4*8Index4*8_*8Zz-AsjJAV3AV5AVA-Kernel-Middleware%2F9Models0J-3-37-5Post-58XWsj*%27)~version!%271%27)*%20%20-X*0%2F9*2RepositoryV3Community4zV5Conversation6Service7MemberProfile8Comment9%5Cn*AControllerB*PostJUserNSharingOChannelQ*ContractV-*WProviderX.php9YExceptionZUpdate_Store4j0*zRequest%01zj_ZYXWVQONJBA987654320-* -->
+<!-- https://tree.nathanfriend.io/?s=(%27options!(%27fancy!true~fullPath!false~trailingSlash!true~rootDot!true)~source!(%27source!%27app9Console9*Commands0KernelYDomain0J0BJV*J2JVJ2J6W-30B3V*32*7V*72*36V3V327V7236V36W-50*ZszNLimitExceededZ-BNV*N2*8V*82*56VNVN28V8256-O0BQV*O6YInfra0O0*QszSlackQV*TwitterQV*FacebookQVGlobalConfigVO6VO6WV9Zs0HandlerYHttp0js0*JzX_43z%22X_45zN%22NXN_4*8%228X8_j-As0*JAV3AV5AVA-Kernel-Middleware%2F9Models0J-3-37-5N-58YWsz%27)~version!%271%27)*%20%20-Y*0%2F9*2RepositoryV3Community4jV5Conversation6Service7MemberProfile8Comment9%5Cn*AControllerB*ContractzJUserNPostOSharingQChannelV-*WProviderXStore4*Y.php9ZException_UpdatejRequestz0**%22Index4*%01%22zj_ZYXWVQONJBA987654320-* -->
 
 以前のサンプルをベースに，少し機能を発展させたバージョンを考えてみます。
 
@@ -111,7 +111,7 @@ https://zenn.dev/mpyw/articles/ce7d09eb6d8117
     │   │   ├── CommentRepository.php
     │   │   └── ConversationService.php
     │   └── Sharing/
-    │       └── Contracts/
+    │       └── Contract/
     │           ├── Channel.php
     │           └── SharingService.php
     ├── Infra/
