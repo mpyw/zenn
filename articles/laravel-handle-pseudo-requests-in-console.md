@@ -91,14 +91,18 @@ class IncomingRequestHandler
      *
      * @phpstan-param 'GET'|'HEAD'|'POST'|'PUT'|'PATCH'|'DELETE' $method
      */
-    public function handleQueryRequest(string $method, string $uri, string $query): void
+    public function handleQueryRequest(string $method, string $uri, string|array $query): void
     {
-        parse_str($query, $parsed);
+        if (is_string($query)) {
+            parse_str($query, $parameters);
+        } else {
+            $parameters = $query;
+        }
 
         $this->handle(Request::create(
             uri: $uri,
             method: $method,
-            parameters: $parsed,
+            parameters: $parameters,
             server: [
                 'HTTP_ACCEPT' => 'application/json',
             ],
@@ -110,7 +114,7 @@ class IncomingRequestHandler
      *
      * @phpstan-param 'POST'|'PUT'|'PATCH'|'DELETE' $method
      */
-    public function handleJsonRequest(string $method, string $uri, string $json): void
+    public function handleJsonRequest(string $method, string $uri, string|array $json): void
     {
         $this->handle(Request::create(
             uri: $uri,
@@ -119,7 +123,7 @@ class IncomingRequestHandler
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_ACCEPT' => 'application/json',
             ],
-            content: $json,
+            content: is_string($json) ? $json : (string)json_encode($json),
         ));
     }
 
