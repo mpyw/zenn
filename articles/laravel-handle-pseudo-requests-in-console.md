@@ -178,7 +178,7 @@ use Illuminate\Console\Command;
 
 class DispatchCommand extends Command
 {
-    use HandlesIncomingRequests;
+    use CreatesIncomingRequestHandler;
 
     /**
      * The name and signature of the console command.
