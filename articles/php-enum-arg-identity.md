@@ -163,10 +163,10 @@ class UserRepository
         null|string|Identity $description = new Identity(),
     ): void {
         $updated = [];
-        if ($name instanceof Identity) {
+        if (!$name instanceof Identity) {
             $updated['name'] = $name;
         }
-        if ($description instanceof Identity) {
+        if (!$description instanceof Identity) {
             $updated['description'] = $description;
         }
         var_dump([
