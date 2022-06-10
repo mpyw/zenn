@@ -11,7 +11,7 @@
 
 ### Others
 
-- **[🧐 PHP 8.1 の名前付き引数で NULL と引数省略を区別する方法](https://zenn.dev/mpyw/articles/php-enum-arg-identity.md)
+- **[🧐 PHP 8.1 において名前付き引数で NULL と引数省略を区別する方法](https://zenn.dev/mpyw/articles/php-enum-arg-identity.md)
   &nbsp;[[✍Edit]️](./articles/php-enum-arg-identity.md)**
 - [🐘 [PHP] フレームワークの最新バージョンに対応したライブラリをフレームワークのリリース前から開発する方法](https://zenn.dev/mpyw/articles/a99f3087829993)
   &nbsp;[[✍Edit]️](./articles/a99f3087829993.md)
