@@ -322,7 +322,7 @@ class UserRepository
      */
     public function update(
         int $id,
-        array $params,
+        array $params
     ): void {
         $updated = [];
         if (array_key_exists('name', $params)) {
