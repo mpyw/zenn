@@ -11,6 +11,8 @@
 
 ### Others
 
+- **[🎓 Postgres と MySQL における id, created_at, updated_at に関するベストプラクティス](https://zenn.dev/mpyw/articles/rdb-ids-and-timestamps-best-practices.md)
+  &nbsp;[[✍Edit]️](./articles/rdb-ids-and-timestamps-best-practices.md)**
 - **[🧐 PHP 8.1 において名前付き引数で NULL と引数省略を区別する方法](https://zenn.dev/mpyw/articles/php-enum-arg-identity.md)
   &nbsp;[[✍Edit]️](./articles/php-enum-arg-identity.md)**
 - [🐘 [PHP] フレームワークの最新バージョンに対応したライブラリをフレームワークのリリース前から開発する方法](https://zenn.dev/mpyw/articles/a99f3087829993)
