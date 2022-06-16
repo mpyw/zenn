@@ -88,7 +88,7 @@ MySQL は，ネイティブで UUID 型をサポートしていない。その�
 - `BINARY(16)`
   - Postgres と同じ効率の格納ができるが， SELECT してきた結果がバイナリデータとなるため，プログラムからそのままでは扱いにくい。加工に一工夫必要となる。
 
-どちらを選択しても，一長一短でそれなりのデメリットが目立つ。
+どちらを選択しても，一長一短でそれなりのデメリットが目立つ。但し，生成カラムを活用してバイナリを取り扱いやすくする方法はあるので，それは後述する。
 
 #### UUID: バージョンの検討
 
@@ -200,23 +200,28 @@ CREATE TABLE users(
 ```sql
 -- バイナリ
 CREATE TABLE users(
-    id BINARY(16) PRIMARY KEY DEFAULT (UUID_TO_BIN(UUID(), 1))
+    id BINARY(16) PRIMARY KEY DEFAULT (UUID_TO_BIN(UUID(), 1)),
+    hex CHAR(36) AS (BIN_TO_UUID(id)) VIRTUAL NOT NULL
 );
 ```
 
-- [`UUID_TO_BIN()`](https://dev.mysql.com/doc/refman/8.0/en/miscellaneous-functions.html#function_uuid-to-bin) の *swap_flag* を有効にすることで，タイムスタンプ部の `LOW-MID-HIGH` を `HIGH-MID-LOW` に置き換えている（「秒・分・時」のようなフォーマットを「時・分・秒」に置き換えているイメージに近い）。こうすることによって，時系列ソートできるようにデータが加工されている。
+- 共通
+  - [`UUID_TO_BIN()`](https://dev.mysql.com/doc/refman/8.0/en/miscellaneous-functions.html#function_uuid-to-bin) の *swap_flag* を有効にすることで，タイムスタンプ部の `LOW-MID-HIGH` を `HIGH-MID-LOW` に置き換えている（「秒・分・時」のようなフォーマットを「時・分・秒」に置き換えているイメージに近い）。こうすることによって，時系列ソートできるようにデータが加工されている。
   :::message alert
   変換操作により，本物の UUID としてのフォーマットは崩されてしまうことは避けられない。UUID っぽい見た目をした UUID ではない何か，ということになる。
   :::
-- 文字セットを局所的に `ascii` にすることにより，デフォルトに設定されているであろう `utf8mb4` よりも消費バイト数を小さくしている。
+- `CHAR(36)`
+  - 文字セットを局所的に `ascii` にすることにより，デフォルトに設定されているであろう `utf8mb4` よりも消費バイト数を小さくしている。
+- `BINARY(16)`
+  - **計算結果が保存されない（`STORED` ではなく `VIRTUAL` である）生成カラム** を定義しておくと， SELECT でデータ取得したときのみ計算コストが発生するため，今回の用途に適している。
+  :::message alert
+  `VIRTUAL` である生成カラムは，結果の取得のみに用い，絞り込み条件の対象としてはならない。必ず，入力値をバイナリ変換して使うようにする。
+  ```sql
+  SELECT * FROM users WHERE id = UUID_TO_BIN('xxxxxxxx-xxxx-xxxx-Nxxx-xxxxxxxxxxxx')
+  ```
+  :::
 
-またバイナリ形式の場合，クライアントは以下のように SELECT して 16 進数文字列フォーマットに戻さなければならない。
-
-```sql
-SELECT BIN_TO_UUID(id) FROM users; 
-```
-
-## その他: ULID と UUID v7
+:::details コラム: ULID と UUID v7
 
 UUID v7 が提唱されるよりも前に，時系列ソート可能なランダム値の実装がいくつか考えられてきたが，その 1 つに **[ULID](https://github.com/ulid/spec)** がある。エンコードされている状態の見た目は大きく UUID と異なるが，バイナリフォーマットを覗いてみるとその実態は UUID v7 に極めて近い。
 
@@ -317,7 +322,7 @@ Postgres と同様に，タイムゾーンを考慮してくれる `TIMESTAMP` �
 
 - `BIGINT UNSIGNED` または `DECIMAL(65, 3)`（ミリ秒精度） または `DECIMAL(65, 6)`（マイクロ秒精度）
 
-としてタイムスタンプを数値で格納するのも 1 つの戦略である。（後者は UTC 基準であることを明確にしたい狙いが大きい）
+としてタイムスタンプを数値で格納するのも 1 つの戦略である（後者は UTC 基準であることを明確にしたい狙いが大きい）。後者の場合，先に UUID バイナリに関して説明した通り， `VIRTUAL` な生成カラムを組み合わせてもよい。
 
 :::message alert
 MySQL 8.0.27 までは，西暦 2038 年以降のデータの計算結果は 0 になってしまう。
@@ -335,7 +340,8 @@ CREATE TABLE users(
 
 -- タイムスタンプ変換した DECIMAL（マイクロ秒精度）
 CREATE TABLE users(
-    created_at DECIMAL(65, 6) NOT NULL DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6)))
+    created_at DECIMAL(65, 6) NOT NULL DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))),
+    tz_created_at DATETIME(6) AS (FROM_UNIXTIME(created_at)) VIRTUAL NOT NULL
 );
 ```
 
@@ -349,7 +355,7 @@ CREATE TABLE users(
 
 ### MySQL
 
-MySQL は， `ON UPDATE` という便利なシンタックスを備えており，これにより更新された場合のみ自動で埋めることが簡単にできる。
+MySQL は， `ON UPDATE CURRENT_TIMESTAMP` という便利なシンタックスを備えており，これにより更新された場合のみ自動で埋めることが簡単にできる。
 
 ```sql
 CREATE TABLE users(
@@ -359,17 +365,16 @@ CREATE TABLE users(
 ```
 
 :::message alert
-`updated_at` の値を明示的に更新するクエリが流れてきたときは， `ON UPDATE` の内容は適用されない。
+`updated_at` の値を明示的に更新するクエリが流れてきたときは， `ON UPDATE CURRENT_TIMESTAMP` の内容は適用されない。
 :::
+
+但し， `DEFAULT` と違って任意の式を記述することはできないので， `CURRENT_TIMESTAMP` を代入可能な `TIMESTAMP` `DATETIME` 以外の場合はトリガーで対処するしかない。 MySQL は Postgres と異なり，トリガーの再利用が不可能なので，極めて冗長な記述が必要になってしまう。 `BIGINT` や `DECIMAL` を採用した場合は，自動更新は諦めたほうが賢明だろう。
 
 ### Postgres
 
-実は今回の記事でメイントピックとしたかった内容がこれ。
+実は今回の記事でメイントピックとしたかった内容がこれ。 Postgres に `ON UPDATE CURRENT_TIMESTAMP` という機能は存在しないので，どんな場合でもトリガーを書かなければならない。トリガーの再利用ができる点はマシだと思いたいところ。
 
-Postgres に `ON UPDATE` という機能は存在しないので，トリガーを書かなければならない。
-（珍しく Postgres が MySQL に対して機能的に劣っている面である…）
-
-> `updated_at` の値を明示的に更新するクエリが流れてきたときは， `ON UPDATE` の内容は適用されない。
+> `updated_at` の値を明示的に更新するクエリが流れてきたときは， `ON UPDATE CURRENT_TIMESTAMP` の内容は適用されない。
 
 と MySQL の項で述べたが，これを再現するためには[トリガーが 3 つも必要になってしまう](https://stackoverflow.com/a/8762116)。
 
@@ -429,42 +434,93 @@ CREATE TRIGGER refresh_users_updated_at_step3
 
 が明確に区別できるようになっている。 `refresh_users_updated_at_step2` が `BEFORE UPDATE OF updated_at` により， (B) の場合にしか実行されないのがポイント。
 
-#### UPDATE 文で `updated_at` が省略された
-
+:::details UPDATE 文で updated_at が省略された
 - `refresh_updated_at_step1`
   - `NEW.updated_at = OLD.updated_at` は真であるため， `NEW.updated_at := NULL` が実行される
 - `refresh_updated_at_step3`
   - `NEW.updated_at IS NULL` は真であるため， `NEW.updated_at := CURRENT_TIMESTAMP` が実行される
+:::
 
-#### UPDATE 文で `updated_at` に現在と同じ値が渡された
-
+:::details UPDATE 文で updated_at に現在と同じ値が渡された
 - `refresh_updated_at_step1`
     - `NEW.updated_at = OLD.updated_at` は真であるため， `NEW.updated_at := NULL` が実行される
 - `refresh_updated_at_step2`
     - `NEW.updated_at IS NULL` は真であるため， `NEW.updated_at := OLD.updated_at` が実行される
 - `refresh_updated_at_step3`
     - `NEW.updated_at IS NULL` は偽であるため， `NEW.updated_at` は `OLD.updated_at` のままである
+:::
 
-#### UPDATE 文で `updated_at` に現在と異なる値が渡された
-
+:::details UPDATE 文で updated_at に現在と異なる値が渡された
 - `refresh_updated_at_step1`
     - `NEW.updated_at = OLD.updated_at` は偽であるため， `NEW.updated_at` は渡された値のままである
 - `refresh_updated_at_step2`
     - `NEW.updated_at IS NULL` は偽であるため， `NEW.updated_at` は渡された値のままである
 - `refresh_updated_at_step3`
     - `NEW.updated_at IS NULL` は偽であるため， `NEW.updated_at` は渡された値のままである
+:::
 
-これらの結果により， MySQL の `ON UPDATE` の挙動を正しく再現できていることが分かる。
+これらの結果により， MySQL の `ON UPDATE CURRENT_TIMESTAMP` の挙動を正しく再現できていることが分かる。
 
 # まとめ
 
 - `id`
   - Postgres なら `UUID` ネイティブ型の恩恵を受けつつ **UUID v4** を使うと良い。
-  - MySQL はシーケンシャルでなければならないので，もし UUID を使いたい場合は  `CHAR(36)` か `BINARY(16)` で **UUID v7** を使う。中央集権で簡易的に済ませたければ `AUTO_INCREMENT` でもアリ。
+  - MySQL はシーケンシャルでなければならないので，もし UUID を使いたい場合は  `CHAR(36)` か `BINARY(16)` で **UUID v7** を使う。 `VIRTUAL` な生成カラムを併用するとベター。中央集権で簡易的に済ませたければ `AUTO_INCREMENT` でもアリ。
   - UUID v1 は Docker と相性が悪いので，クライアント側でも採番するなら基本避けたほうが無難。
 - `created_at` `updated_at` 
   - Postgres なら **`TIMESTAMPTZ`** 1択。
-  - MySQL は基本は **`DATETIME`**，場合によっては数値型で明示的に UTC 基準のタイムスタンプとして対応するのもアリ。いずれの場合も，精度をマイクロ秒まで引き上げておくと良い。
+  - MySQL は基本は **`DATETIME`**，場合によっては数値型で明示的に UTC 基準のタイムスタンプとして対応するのもアリ。後者の場合は `VIRTUAL` のあ生成カラムを併用するとベター。いずれの場合も，精度をマイクロ秒まで引き上げておくと良い。
 - `updated_at` の自動更新
-  - MySQL は `ON UPDATE` で OK。
+  - MySQL は `ON UPDATE CURRENT_TIMESTAMP` で OK。
   - Postgres は頑張ってトリガーを 3 つ書く。
+
+## 付録: そのまま使えるモデルケース
+
+### 簡単に済ませたい
+
+:::details Postgres
+```sql
+CREATE TABLE users(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP -- 更新はプログラム側で
+);
+```
+:::
+
+:::details MySQL
+```sql
+CREATE TABLE users(
+    id BIGINT PRIMARY KEY UNSIGNED AUTO_INCREMENT,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
+);
+```
+:::
+
+### 正しさを求めたい
+
+:::details Postgres
+関数定義は省略しています。
+```sql
+CREATE TABLE users(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER refresh_users_updated_at_step1
+    BEFORE UPDATE ON users FOR EACH ROW
+    EXECUTE PROCEDURE refresh_updated_at_step1();
+CREATE TRIGGER refresh_users_updated_at_step2
+    BEFORE UPDATE OF updated_at ON users FOR EACH ROW
+    EXECUTE PROCEDURE refresh_updated_at_step2();
+CREATE TRIGGER refresh_users_updated_at_step3
+    BEFORE UPDATE ON users FOR EACH ROW
+    EXECUTE PROCEDURE refresh_updated_at_step3();
+```
+:::
+
+:::details MySQL
+MySQL は完全に模範解答と言えるものを用意するのが極めて困難です。もう一度よく全体を読んで，トレードオフとしてどこを捨てるかを検討した上で割り切った設計を行ってください。
+:::
