@@ -291,12 +291,15 @@ MySQL の `TIMESTAMP` には「2038 年問題」と呼ばれる有名な問題�
 
 ```sql
 CREATE TABLE users(
-    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP -- トランザクション中は開始時刻に固定される
+);
+CREATE TABLE users(
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp() -- 常に現在時刻を取る
 );
 
--- 丁寧に書く場合
+-- TIMESTAMPTZ を省略せずに丁寧に書く場合
 CREATE TABLE users(
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -395,7 +398,7 @@ CREATE FUNCTION refresh_updated_at_step3() RETURNS trigger AS
 $$
 BEGIN
   IF NEW.updated_at IS NULL THEN
-    NEW.updated_at := clock_timestamp();
+    NEW.updated_at := CURRENT_TIMESTAMP;
   END IF;
   RETURN NEW;
 END;
@@ -404,8 +407,8 @@ $$ LANGUAGE plpgsql;
 
 ```sql
 CREATE TABLE users(
-    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TRIGGER refresh_users_updated_at_step1
@@ -431,7 +434,7 @@ CREATE TRIGGER refresh_users_updated_at_step3
 - `refresh_updated_at_step1`
   - `NEW.updated_at = OLD.updated_at` は真であるため， `NEW.updated_at := NULL` が実行される
 - `refresh_updated_at_step3`
-  - `NEW.updated_at IS NULL` は真であるため， `NEW.updated_at := clock_timestamp()` が実行される
+  - `NEW.updated_at IS NULL` は真であるため， `NEW.updated_at := CURRENT_TIMESTAMP` が実行される
 
 #### UPDATE 文で `updated_at` に現在と同じ値が渡された
 
