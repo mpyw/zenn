@@ -25,7 +25,7 @@ published: true
 一般的に採用されやすいプライマリキー用の値として，以下を考える。
 
 - **連番整数**
-  - MySQL では [`AUTO_INCREMENT`](https://dev.mysql.com/doc/refman/8.0/en/example-auto-increment.html)， Postgres では [`SERIAL`](https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-SERIAL) と呼ばれるもの
+  - MySQL では [`AUTO_INCREMENT`](https://dev.mysql.com/doc/refman/8.0/en/example-auto-increment.html)， Postgres では [`IDENTITY`](https://www.postgresql.org/docs/current/sql-createtable.html) や [`SERIAL`](https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-SERIAL) と呼ばれるもの
 - **[UUID v1](https://ja.wikipedia.org/wiki/UUID)**: ハードウェアごとにユニークな単調増加値
 - **[UUID v4](https://ja.wikipedia.org/wiki/UUID)**: ランダム値
 - **[UUID v7](https://asnokaze.hatenablog.com/entry/2021/04/28/030550)**（ドラフト）: 単調増加であるタイムスタンプとランダム値の複合
@@ -70,7 +70,7 @@ Postgres は，[ネイティブで UUID 型をサポート](https://www.postgres
 
 - 特に拘りが無ければ **UUID v4** を選ぶ。
 - 基本は `created_at` `updated_at` を併用してソートすべきであるが， ID でどうしてもソートしたければ **UUID v7** または UUID v1 を選んでもよい。また，数千億・数兆単位のレコードを扱う場合は， UUID v7 のほうが理論上は性能劣化しにくい。
-- `SERIAL` は，アトミックな順序保証が欲しいなどの特殊なケースを除いては，それほど積極的に採用する理由はない。
+- `IDENTITY` `SERIAL` は，アトミックな順序保証が欲しいなどの特殊なケースを除いては，それほど積極的に採用する理由はない。
 :::
 
 :::message alert
@@ -118,7 +118,7 @@ UUID v1 は， Docker 環境の中でクライアントから能動的に発行�
 
 ### Postgres
 
-`SERIAL` を使う場合は省略し， UUID v4 と UUID v7 の例を紹介する。
+`IDENTITY` `SERIAL` を使う場合は省略し， UUID v4 と UUID v7 の例を紹介する。
 
 #### UUID v4
 
