@@ -42,11 +42,11 @@ published: true
 
 また，（UUID バージョンによらず） UUID 形式の値を取り扱う場合，各 RDBMS によって相性がある。
 
-|            |                                                      MySQL                                                      |                                              Postgres                                               |
-|:-----------|:---------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------:|
-| 専用データ型     |                                      なし<br>（`CHAR(36)` か `BINARY(16)` で代替）                                      |                                       **あり**<br>（**`UUID`**）                                        |
-| 性能面での懸念    |                                                ソート可能でなければ性能が劣化する                                                |                                             **なし**<br>                                              |
-| 値を生成する標準関数 | **[`UUID()`](https://dev.mysql.com/doc/refman/8.0/en/miscellaneous-functions.html#function_uuid)**<br>（UUID v1） | **[`gen_random_uuid()`](https://www.postgresql.org/docs/current/functions-uuid.html)**<br>（UUID v4） | 
+|                    |                                                      MySQL                                                      |                                              Postgres                                               |
+|:-------------------|:---------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------:|
+| 専用データ型             |                                      なし<br>（`CHAR(36)` か `BINARY(16)` で代替）                                      |                                       **あり**<br>（**`UUID`**）                                        |
+| 時系列ソート可能でないキーの性能劣化 |                                                    致命的な問題あり                                                     |                                    極めて大量のデータでは若干の性能低下が起こる可能性がある                                     |
+| 値を生成する標準関数         | **[`UUID()`](https://dev.mysql.com/doc/refman/8.0/en/miscellaneous-functions.html#function_uuid)**<br>（UUID v1） | **[`gen_random_uuid()`](https://www.postgresql.org/docs/current/functions-uuid.html)**<br>（UUID v4） |
 
 ## 選考基準
 
@@ -63,13 +63,14 @@ Postgres は，[ネイティブで UUID 型をサポート](https://www.postgres
 
 基本は `created_at` `updated_at` を併用してソートすべきであるが， `id` 単体での時系列ソートが欲しいときは， UUID v7 や UUID v1 を使うことになる。この場合は， UUID v7 の使用を推奨する。 **UUID v1 は MAC アドレス依存があるが， Docker 環境の中にいる場合は取得できる値が一意であることが保証されにくいためである。**
 
+また後述するように， MySQL ほど致命的な影響が無いものの，数千億・数兆単位のレコードでは，理論上はわずかに影響が出てくる可能性がある。このクラスのデータ量を扱うことが事前に分かっている場合は， UUID v7 がより安全な選択にはなるだろう。
+
 :::message
 **選考のポイント**
 
 - 特に拘りが無ければ **UUID v4** を選ぶ。
-- 基本は `created_at` `updated_at` を併用してソートすべきであるが， ID でどうしてもソートしたければ **UUID v7** または UUID v1 を選んでもよい。
+- 基本は `created_at` `updated_at` を併用してソートすべきであるが， ID でどうしてもソートしたければ **UUID v7** または UUID v1 を選んでもよい。また，数千億・数兆単位のレコードを扱う場合は， UUID v7 のほうが理論上は性能劣化しにくい。
 - `SERIAL` は，アトミックな順序保証が欲しいなどの特殊なケースを除いては，それほど積極的に採用する理由はない。
-
 :::
 
 :::message alert
@@ -91,7 +92,10 @@ MySQL は，ネイティブで UUID 型をサポートしていない。その�
 
 #### UUID: バージョンの検討
 
-MySQL においては， Postgres と異なり，すべてのテーブルにおいてデフォルトで **[クラスターインデックス](https://dev.mysql.com/doc/refman/8.0/en/innodb-index-types.html)** というフォーマットが強制される。これが原因となって，**[シーケンシャルでない値が連続インサートされたときに性能が劣化することが知られている](https://techblog.raccoon.ne.jp/archives/1627262796.html)**。そのため， MySQL で主キーとして UUID を利用する場合，最もよく使われる完全にランダムな UUID v4 を使うことが不利に働く場合がある。
+MySQL においては， Postgres と異なり，すべてのテーブルにおいてデフォルトで **[クラスターインデックス](https://dev.mysql.com/doc/refman/8.0/en/innodb-index-types.html)** というフォーマットが強制される。これが原因となって，**シーケンシャルでない値が連続インサートされたときに大きく性能が劣化することが知られている**。そのため， MySQL で主キーとして UUID を利用する場合，最もよく使われる完全にランダムな UUID v4 を使うことが不利に働く場合がある。
+
+- **[MySQLでプライマリキーをUUIDにする前に知っておいて欲しいこと | Raccoon Tech Blog](https://techblog.raccoon.ne.jp/archives/1627262796.html)**
+- **[MySQLとPostgreSQLと主キー - Speaker Deck](https://speakerdeck.com/hmatsu47/mysqltopostgresqltozhu-ki?slide=26)**
 
 これらを踏まえると，最も安牌な選択肢は連番整数となる。次点で UUID v7， UUID v1 となる。 UUID v1 は Postgres の項でも紹介したように， Docker との親和性の悪さの問題があるので注意。
 
