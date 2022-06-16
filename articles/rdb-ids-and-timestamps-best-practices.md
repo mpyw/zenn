@@ -452,8 +452,8 @@ CREATE TRIGGER refresh_users_updated_at_step3
   - MySQL はシーケンシャルでなければならないので，もし UUID を使いたい場合は  `CHAR(36)` か `BINARY(16)` で **UUID v7** を使う。中央集権で簡易的に済ませたければ `AUTO_INCREMENT` でもアリ。
   - UUID v1 は Docker と相性が悪いので，クライアント側でも採番するなら基本避けたほうが無難。
 - `created_at` `updated_at` 
-  - Postgres なら `TIMESTAMPTZ` 1択。
-  - MySQL は基本は `DATETIME`，場合によっては数値型で明示的に UTC 基準のタイムスタンプとして対応するのもアリ。いずれの場合も，精度をマイクロ秒まで引き上げておくと良い。
+  - Postgres なら **`TIMESTAMPTZ`** 1択。
+  - MySQL は基本は **`DATETIME`**，場合によっては数値型で明示的に UTC 基準のタイムスタンプとして対応するのもアリ。いずれの場合も，精度をマイクロ秒まで引き上げておくと良い。
 - `updated_at` の自動更新
   - MySQL は `ON UPDATE` で OK。
   - Postgres は頑張ってトリガーを 3 つ書く。
