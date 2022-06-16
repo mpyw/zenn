@@ -77,6 +77,10 @@ Postgres は，[ネイティブで UUID 型をサポート](https://www.postgres
 UUID v1 は， Docker 環境の中でクライアントから能動的に発行することを想定する場合は推奨されない。
 :::
 
+:::message alert
+トランザクションの中で順序保証
+:::
+
 ### MySQL
 
 #### UUID: データ型の検討
@@ -291,14 +295,18 @@ MySQL の `TIMESTAMP` には「2038 年問題」と呼ばれる有名な問題�
 
 ```sql
 CREATE TABLE users(
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 
 -- 丁寧に書く場合
 CREATE TABLE users(
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
 );
 ```
+
+:::message alert
+Postgres においては， `CURRENT_TIMESTAMP` `current_timestamp()` `now()` などは全て**トランザクション開始時刻**を返すようになっている。トランザクションに左右されない MySQL のような仕様にしたい場合は，代わりに [`clock_timestamp()`](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT) という関数を使う必要がある。必要に応じて使い分けたい。
+:::
 
 ### MySQL
 
@@ -391,7 +399,7 @@ CREATE FUNCTION refresh_updated_at_step3() RETURNS trigger AS
 $$
 BEGIN
   IF NEW.updated_at IS NULL THEN
-    NEW.updated_at := CURRENT_TIMESTAMP;
+    NEW.updated_at := clock_timestamp();
   END IF;
   RETURN NEW;
 END;
@@ -400,8 +408,8 @@ $$ LANGUAGE plpgsql;
 
 ```sql
 CREATE TABLE users(
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 
 CREATE TRIGGER refresh_users_updated_at_step1
@@ -427,7 +435,7 @@ CREATE TRIGGER refresh_users_updated_at_step3
 - `refresh_updated_at_step1`
   - `NEW.updated_at = OLD.updated_at` は真であるため， `NEW.updated_at := NULL` が実行される
 - `refresh_updated_at_step3`
-  - `NEW.updated_at IS NULL` は真であるため， `NEW.updated_at := CURRENT_TIMESTAMP` が実行される
+  - `NEW.updated_at IS NULL` は真であるため， `NEW.updated_at := clock_timestamp()` が実行される
 
 #### UPDATE 文で `updated_at` に現在と同じ値が渡された
 
