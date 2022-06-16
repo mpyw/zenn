@@ -59,7 +59,7 @@ Postgres は，[ネイティブで UUID 型をサポート](https://www.postgres
 - 内部的には 16 バイトのバイナリ形式で格納されるため，最も空間効率が良い。
 - 表層的には `xxxxxxxx-xxxx-xxxx-Nxxx-xxxxxxxxxxxx` の 16 進数表記に見えるため，プログラムから取り扱いやすい。
 
-また， [`gen_random_uuid()`](https://www.postgresql.org/docs/current/functions-uuid.html) という UUID v4 の生成関数も標準で提供されているため，デフォルト値としての自動生成も必要に応じてできる。 Postgres においては，アトミックな順序保証が欲しかったり，インデックスサイズを小さくする必要があったり，MySQL の章にて後述する「クラスターインデックス」を意図的に Postgres で使ったりしない場合は， UUID v4 が最有力な選択肢となるだろう。
+また， [`gen_random_uuid()`](https://www.postgresql.org/docs/current/functions-uuid.html) という UUID v4 の生成関数も標準で提供されているため，デフォルト値としての自動生成も必要に応じてできる。 Postgres においては，アトミックな順序保証が欲しかったり，インデックスサイズを小さくする必要があったり，MySQL の項にて後述する「クラスターインデックス」を意図的に Postgres で使ったりしない場合は， UUID v4 が最有力な選択肢となるだろう。
 
 基本は `created_at` `updated_at` を併用してソートすべきであるが， `id` 単体での時系列ソートが欲しいときは， UUID v7 や UUID v1 を使うことになる。この場合は， UUID v7 の使用を推奨する。 **UUID v1 は MAC アドレス依存があるが， Docker 環境の中にいる場合は取得できる値が一意であることが保証されにくいためである。**
 
