@@ -77,10 +77,6 @@ Postgres は，[ネイティブで UUID 型をサポート](https://www.postgres
 UUID v1 は， Docker 環境の中でクライアントから能動的に発行することを想定する場合は推奨されない。
 :::
 
-:::message alert
-トランザクションの中で順序保証
-:::
-
 ### MySQL
 
 #### UUID: データ型の検討
