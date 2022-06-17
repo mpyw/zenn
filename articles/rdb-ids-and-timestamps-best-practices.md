@@ -469,7 +469,7 @@ CREATE TRIGGER refresh_users_updated_at_step3
   - UUID v1 は Docker と相性が悪いので，クライアント側でも採番するなら基本避けたほうが無難。
 - `created_at` `updated_at` 
   - Postgres なら **`TIMESTAMPTZ`** 1択。
-  - MySQL は基本は **`DATETIME`**，場合によっては数値型で明示的に UTC 基準のタイムスタンプとして対応するのもアリ。後者の場合は `VIRTUAL` のあ生成カラムを併用するとベター。いずれの場合も，精度をマイクロ秒まで引き上げておくと良い。
+  - MySQL は基本は **`DATETIME`**，場合によっては数値型で明示的に UTC 基準のタイムスタンプとして対応するのもアリ。後者の場合は `VIRTUAL` の生成カラムを併用するとベター。いずれの場合も，精度をマイクロ秒まで引き上げておくと良い。
 - `updated_at` の自動更新
   - MySQL は `ON UPDATE CURRENT_TIMESTAMP` で OK。
   - Postgres は頑張ってトリガーを 3 つ書く。
