@@ -365,14 +365,17 @@ RETURNING *;
 COMMIT;
 ```
 
-## MySQL の `REPEATABLE READ` の特性を利用したロック
+## MySQL の `REPEATABLE READ` と `INSERT ... ON DUPLICATE KEY UPDATE ...` の特性利用 + テーブルでのロック情報保持
 
 https://www.slideshare.net/ichirin2501/insert-51938787
 
 こちらで紹介されているテクニック。 Postgres の `REPEATABLE READ` は競合時に強制的に失敗させられてしまうが， MySQL は可能な限り続行しようとする故に実現可能となっている。
 
+:::message
+MySQL が **「`REPEATABLE READ` であっても大丈夫」** というだけで，「`REPEATABLE READ` でなければならない」という訳ではない。
+:::
+
 ```sql
-SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; -- MySQL は BEGIN の前に実行する
 BEGIN;
 
 -- ON DUPLICATE KEY UPDATE で意味のない更新を書くバッドノウハウ
@@ -419,8 +422,8 @@ SELECT GET_LOCK('任意の文字列', タイムアウト);
 
 まだレコードが存在していないときの空振り対策として，以下のどれかを選択する。
 
-| RDBMS             | 分離レベル             | 対処法                                                       |
-|:------------------|:------------------|:----------------------------------------------------------|
-| Postgres<br>MySQL | `READ COMMITTED`  | あらかじめレコードを埋めておく                                           |
-| Postgres<br>MySQL | `READ COMMITTED`  | アドバイザリーロック関数を併用する                                         |
-| MySQL             | `REPEATABLE READ` | `INSERT ... ON DUPLICATE KEY UPDATE ...`<br>のバッドノウハウを併用する |
+| RDBMS             | 分離レベル                                 | 対処法                                                       |
+|:------------------|:--------------------------------------|:----------------------------------------------------------|
+| Postgres<br>MySQL | `READ COMMITTED`                      | あらかじめレコードを埋めておく                                           |
+| Postgres<br>MySQL | `READ COMMITTED`                      | アドバイザリーロック関数を併用する                                         |
+| MySQL             | `REPEATABLE READ`<br>`READ COMMITTED` | `INSERT ... ON DUPLICATE KEY UPDATE ...`<br>のバッドノウハウを併用する |
