@@ -306,7 +306,7 @@ WITH m AS (
     )
     FOR UPDATE NOWAIT
 )
-UPDATE mutex SET expires_at = ...
+UPDATE mutex SET owner = '所有者', expires_at = ...
 WHERE key = (SELECT key FROM m);
 
 -- UPDATE が作用したときだけ処理を続行
@@ -355,7 +355,7 @@ SELECT 'user:U1:order', '所有者', ...
 WHERE NOT EXISTS(SELECT * FROM m_all) -- ロックが存在せず新規作成される場合
    OR EXISTS(SELECT * FROM m_stale)   -- 古いロックまたは引き継ぎ可能なロックが残っている場合
 ON CONFLICT(key) DO UPDATE
-SET expires_at = EXCLUDED.expires_at 
+SET owner = EXCLUDED.owner, expires_at = EXCLUDED.expires_at 
 RETURNING *;
 
 -- UPDATE が作用したときだけ処理を続行
@@ -394,7 +394,7 @@ WITH m AS (
     )
     FOR UPDATE NOWAIT
 )
-UPDATE mutex SET expires_at = ...
+UPDATE mutex SET owner = '所有者', expires_at = ...
 WHERE key = (SELECT key FROM m);
 
 -- UPDATE が作用したときだけ処理を続行
