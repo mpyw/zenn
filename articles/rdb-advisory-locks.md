@@ -3,7 +3,7 @@ title: "排他制御のためだけに Redis 渋々使ってませんか？デ�
 emoji: "🔒"
 type: "tech"
 topics: ["postgresql", "postgres", "mysql", "database", "redis"]
-published: false
+published: true
 ---
 
 # 背景
