@@ -203,11 +203,17 @@ https://christina04.hatenablog.com/entry/redis-distributed-locking
 対処法として **RedLock** という，複数ノードを用いた分散ロックアルゴリズムが紹介されている。自前で書くのは骨が折れるため，ライブラリを使いたいところ。
 
 :::message
-RedLock にも時間経過で意図せずロックが解放される問題点があると記事で言及されているが，ここではガベージコレクションがボトルネックになるような極めて短い時間軸の話をしており，それよりも長い時間軸で余裕を持ってロックを取る場合は大きな問題にはならない。**タイムアウトは十分処理が間に合うように，かつ無駄に長すぎないように，これら 2 点をどちらも気にかけて決定しよう。**<br>
-また楽観ロック用のフェンシングトークンを自動発行してくれる KVS として Hashicorp Consul が挙げられているが， AWS においては Amazon Elasticsearch Service のようなフルマネージドサービスがまだ Consul 向けには存在していないため，自前管理する必要がある。
+RedLock にも時間経過で意図せずロックが解放される問題点があると記事で言及されているが，ここではガベージコレクションがボトルネックになるような極めて短い時間軸の話をしており，それよりも長い時間軸で余裕を持ってロックを取る場合は大きな問題にはならない。**タイムアウトは十分処理が間に合うように，かつ無駄に長すぎないように，これら 2 点をどちらも気にかけて決定しよう。**
 :::
 
-**総評: 汎用性が高いが，厳密に安全性を考えると RedLock などのアルゴリズムに基づいた冗長化が必要になり，ややコストが高い。**
+:::message
+**2022-07-07 18:45 追記**
+
+- 現在，Redis 社が **[RedisRaft](https://github.com/RedisLabs/redisraft)** という，速さを犠牲にして強整合性を担保する **[Raft Consensus Algorithm](https://raft.github.io/)** を実験的に実装しているそうだ。これが Redis に本採用されれば， RedLock に頼らない選択肢が増えるという。
+- AWS の場合， **[MemoryDB](https://aws.amazon.com/jp/memorydb/)** という **[ElastiCache](https://aws.amazon.com/jp/elasticache/)** とは別のフルマネージドな Redis 互換実装が提供されており，こちらは RedisRaft のような強整合性を担保できるようだ。排他制御の用途では間違いなく ElastiCache よりも MemoryDB のほうが適任ではあるので，費用を見積もった上で抵抗がないなら採用を検討してもよいだろう。
+:::
+
+**総評: 汎用性が高いが，厳密に安全性を考えると RedLock などのアルゴリズムに基づいた冗長化が必要になり，ややコストが高い。但し，AWS の場合は ElastiCache の代わりに MemoryDB を使えば解決する。また，将来的に RedisRaft が正式導入されればオープンソースな Redis でも解決できるようになる可能性がある。**
 
 ## OS のファイルロック
 
@@ -356,7 +362,7 @@ ON CONFLICT(key) DO UPDATE
 SET owner = EXCLUDED.owner, expires_at = EXCLUDED.expires_at 
 RETURNING *;
 
--- UPDATE が作用したときだけ処理を続行
+-- INSERT または UPDATE が作用したときだけ処理を続行
 -- ...
 -- ...
 
@@ -446,3 +452,9 @@ SELECT GET_LOCK('任意の文字列', タイムアウト);
 :::message alert
 Postgres は必ず `READ COMMITTED` でなければならない
 :::
+
+但し AWS の場合は， MemoryDB の採用を検討してもよい。
+
+https://aws.amazon.com/jp/memorydb/
+
+従来の Redis では満たせなかった強整合性・耐障害性を担保できているため，予算さえ許せば優秀な選択肢であると考えられる。
