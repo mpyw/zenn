@@ -325,9 +325,7 @@ COMMIT;
 - アドバイザリーロック関数の「セッション越えを出来ない」という弱点
 - ロック専用テーブルの「予めレコードを用意しておく必要がある」という弱点
 
-を両方とも克服する手法。
-
-以下に Postgres での `READ COMMITTED` を想定して記述する。 MySQL でもギャップロックの発生しない `READ COMMITTED` を使っていればほぼ同様である。
+を両方とも克服する手法。 以下に Postgres を想定して記述するが， MySQL でもほぼ同様である。
 
 ```sql
 BEGIN;
@@ -422,8 +420,12 @@ SELECT GET_LOCK('任意の文字列', タイムアウト);
 
 まだレコードが存在していないときの空振り対策として，以下のどれかを選択する。
 
-| RDBMS             | 分離レベル                                 | 対処法                                                       |
-|:------------------|:--------------------------------------|:----------------------------------------------------------|
-| Postgres<br>MySQL | `READ COMMITTED`                      | あらかじめレコードを埋めておく                                           |
-| Postgres<br>MySQL | `READ COMMITTED`                      | アドバイザリーロック関数を併用する                                         |
-| MySQL             | `REPEATABLE READ`<br>`READ COMMITTED` | `INSERT ... ON DUPLICATE KEY UPDATE ...`<br>のバッドノウハウを併用する |
+| RDBMS             | 対処法                                                       |
+|:------------------|:----------------------------------------------------------|
+| Postgres<br>MySQL | あらかじめレコードを埋めておく                                           |
+| Postgres<br>MySQL | アドバイザリーロック関数を併用する                                         |
+| MySQL             | `INSERT ... ON DUPLICATE KEY UPDATE ...`<br>のバッドノウハウを併用する |
+
+:::message alert
+Postgres は `READ COMMITTED` を強く推奨
+:::
