@@ -280,15 +280,15 @@ COMMIT;
 -- Postgres
 CREATE TABLE mutex(
     key varchar(64) PRIMARY KEY,
+    owner varchar(64) NOT NULL, -- 所有者
     expires_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01 00:00:00', -- ロックの有効期限
-    owner varchar(64) NOT NULL -- 所有者
 );
 
 -- MySQL
 CREATE TABLE mutex(
     `key` varchar(64) PRIMARY KEY,
-    expires_at datetime NOT NULL DEFAULT '1970-01-01 00:00:00', -- ロックの有効期限
-    owner varchar(64) NOT NULL -- 所有者
+    owner varchar(64) NOT NULL, -- 所有者
+    expires_at datetime NOT NULL DEFAULT '1970-01-01 00:00:00' -- ロックの有効期限
 );
 ```
 
@@ -363,15 +363,35 @@ RETURNING *;
 COMMIT;
 ```
 
-## MySQL の `REPEATABLE READ` と `INSERT ... ON DUPLICATE KEY UPDATE ...` の特性利用 + テーブルでのロック情報保持
+## 空打ちでエラー回避できる `INSERT`  + テーブルでのロック情報保持
+
+```sql
+-- Postgres
+INSERT INTO mutex(`key`, owner, expires_at)
+VALUES ('user:U1:order', '所有者', ...)
+ON CONFLICT(key) DO NOTHING;
+
+-- MySQL
+INSERT INTO mutex(`key`, owner, expires_at)
+VALUES ('user:U1:order', '所有者', ...)
+ON DUPLICATE KEY UPDATE `key` = VALUES(`key`);
+```
 
 https://www.slideshare.net/ichirin2501/insert-51938787
 
-こちらで紹介されているテクニック。 Postgres の `REPEATABLE READ` は競合時に強制的に失敗させられてしまうが， MySQL は可能な限り続行しようとする故に実現可能となっている。
+こちらで紹介されているテクニック。一見 MySQL 専用かと思いきや， Postgres は `INSERT IGNORE` よりもお行儀のいい **`ON CONFLICT(key) DO NOTHING`** を備えているため，バッドノウハウっぽい書き方をしなくても達成できる。
 
 :::message
 MySQL が **「`REPEATABLE READ` であっても大丈夫」** というだけで，「`REPEATABLE READ` でなければならない」という訳ではない。
 :::
+
+:::message alert
+トランザクションが競合した際， MySQL の `REPEATABLE READ` は可能な限り先行者を優先して続行しようとするが， Postgres はどちらも失敗させるという違いがある。そのため， Postgres がこの方法を使う場合は `READ COMMITTED` でなければならない。
+:::
+
+大きな欠点として， **`INSERT` でブロッキングが発生する** 点が挙げられる。そのため，後続の `SELECT ... FOR UPDATE` に `NOWAIT` をつけても意味がない。タイムアウトが設定できないため，この方法はあまり推奨されない。
+
+以下は MySQL の例
 
 ```sql
 BEGIN;
@@ -390,7 +410,7 @@ WITH m AS (
         owner = '所有者'       -- 所有者自身による引き継ぎ
         OR expires_at < NOW() -- ロックの有効期限が切れた
     )
-    FOR UPDATE NOWAIT
+    FOR UPDATE
 )
 UPDATE mutex SET owner = '所有者', expires_at = ...
 WHERE key = (SELECT key FROM m);
@@ -420,12 +440,9 @@ SELECT GET_LOCK('任意の文字列', タイムアウト);
 
 まだレコードが存在していないときの空振り対策として，以下のどれかを選択する。
 
-| RDBMS             | 対処法                                                       |
-|:------------------|:----------------------------------------------------------|
-| Postgres<br>MySQL | あらかじめレコードを埋めておく                                           |
-| Postgres<br>MySQL | アドバイザリーロック関数を併用する                                         |
-| MySQL             | `INSERT ... ON DUPLICATE KEY UPDATE ...`<br>のバッドノウハウを併用する |
+- あらかじめレコードを埋めておく
+- アドバイザリーロック関数を併用する
 
 :::message alert
-Postgres は `READ COMMITTED` を強く推奨
+Postgres は必ず `READ COMMITTED` でなければならない
 :::
