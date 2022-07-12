@@ -68,8 +68,8 @@ https://www.postgresql.jp/document/13/html/functions-admin.html#FUNCTIONS-ADVISO
 | 関数                              | ロックのスコープ  | 競合時の挙動  |
 |:--------------------------------|:---------:|:-------:|
 | `pg_advisory_lock`              |   セッション   |   待機    |
-| `pg_try_advisory_lock`          |   セッション   |   待機    |
-| `pg_advisory_xact_lock`         | トランザクション  |   失敗    |
+| `pg_try_advisory_lock`          |   セッション   |   失敗    |
+| `pg_advisory_xact_lock`         | トランザクション  |   待機    |
 | **`pg_try_advisory_xact_lock`** | トランザクション  |   失敗    |
 
 **`pg_try_advisory_xact_lock`** は，トランザクション開始直後に使用し，解放はトランザクションの終了に任せるという使い方をする。
