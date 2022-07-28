@@ -420,8 +420,8 @@ ON DUPLICATE KEY UPDATE `key` = VALUES(`key`);
 -- ロックの可否を取得
 -- 取得できた場合， expires_at を更新
 WITH m AS (
-    SELECT key FROM mutex
-    WHERE key = 'user:U1:order'
+    SELECT `key` FROM mutex
+    WHERE `key` = 'user:U1:order'
     AND (
         owner = '所有者'       -- 所有者自身による引き継ぎ
         OR expires_at < NOW() -- ロックの有効期限が切れた
@@ -429,7 +429,7 @@ WITH m AS (
     FOR UPDATE
 )
 UPDATE mutex SET owner = '所有者', expires_at = ...
-WHERE key = (SELECT key FROM m);
+WHERE `key` = (SELECT `key` FROM m);
 
 -- UPDATE が作用したときだけ処理を続行
 -- ...
