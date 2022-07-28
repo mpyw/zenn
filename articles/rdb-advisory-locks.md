@@ -297,7 +297,7 @@ COMMIT;
 CREATE TABLE mutex(
     key varchar(64) PRIMARY KEY,
     owner varchar(64) NOT NULL, -- 所有者
-    expires_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01 00:00:00', -- ロックの有効期限
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01 00:00:00' -- ロックの有効期限
 );
 
 -- MySQL
