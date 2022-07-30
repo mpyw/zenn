@@ -229,7 +229,7 @@ https://www.postgresql.jp/docs/12/transaction-iso.html
 
 #### 総評
 
-Postgres は `READ COMMITTED` までは MySQL に似た動きをする一方， `REPEATABLE READ` 以上では悲観ロックに加えて楽観ロックの仕組みも RDBMS 側に取り入れている。 `SERIALIZABLE` 実用的に使用できる。但しチューニングのために結局気をつけることが増える上に，高頻度な更新処理には適さないため，活躍できるシーンは限られると考えられる。
+Postgres は `READ COMMITTED` までは MySQL に似た動きをする一方， `REPEATABLE READ` 以上では悲観ロックに加えて楽観ロックの仕組みも RDBMS 側に取り入れている。 `SERIALIZABLE` も実用的に使用できる。但しチューニングのために結局気をつけることが増える上に，高頻度な更新処理には適さないため，活躍できるシーンは限られると考えられる。
 
 # どのトランザクション分離レベルを選択すればよいか？<br>ロック戦略はどうすればよいか？
 
