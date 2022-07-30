@@ -163,6 +163,10 @@ GET_LOCK(str text, timeout integer): ?integer
 - [MySQL :: MySQL 5.6 リファレンスマニュアル :: 5.2.4.2 バイナリログ形式の設定](https://dev.mysql.com/doc/refman/5.6/ja/binary-log-setting.html)
 - [MySQL 5.6 | db<>fiddle](https://dbfiddle.uk/?rdbms=mysql_5.6&fiddle=f3c32887ccdf7a17407dc8d709c49707)
 - [MySQL 5.7 | db<>fiddle](https://dbfiddle.uk/?rdbms=mysql_5.7&fiddle=f3c32887ccdf7a17407dc8d709c49707)
+
+但しオンプレミスの環境では，パフォーマンスを優先して敢えて `STATEMENT` に切り替えた上で論理レプリケーションを行っている場合がある。独自フォーマットで物理レプリケーションを行っている AWS Aurora 等の場合は問題ないが，一応脳の片隅には置いておきたいところ。
+
+- [MySQLのレプリケーション設定で起きたトラブルの原因とその解決策 - Yahoo! JAPAN Tech Blog](https://techblog.yahoo.co.jp/entry/2020072730014361/)
 :::
 
 ## Redis
