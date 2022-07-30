@@ -3,7 +3,7 @@ title: "MySQL/Postgres におけるトランザクション分離レベルと発
 emoji: "🔒"
 type: "tech"
 topics: ["database", "transaction", "isolation", "postgresql", "mysql"]
-published: false
+published: true
 ---
 
 # 読者対象
@@ -231,4 +231,42 @@ https://www.postgresql.jp/docs/12/transaction-iso.html
 
 Postgres は `READ COMMITTED` までは MySQL に似た動きをする一方， `REPEATABLE READ` 以上では悲観ロックに加えて楽観ロックの仕組みも RDBMS 側に取り入れている。 `SERIALIZABLE` 実用的に使用できる。但しチューニングのために結局気をつけることが増える上に，高頻度な更新処理には適さないため，活躍できるシーンは限られると考えられる。
 
-# MySQL/Postgres のトランザクション分離レベルおよびロック戦略はどうすればいいか？
+# どのトランザクション分離レベルを選択すればよいか？<br>ロック戦略はどうすればよいか？
+
+以下は個人的な意見。
+
+## 共通
+
+- 基本的には **`READ COMMITTED`** をベースにした上で **Locking Read** を活用せよ。通常は **`NO WAIT`** オプションを付与してブロッキングを回避し，即時失敗させるとよい。
+- Locking Read は空振りするとレコードロックが取得できないので，その懸念がある場合は **アドバイザリーロック** を併用せよ。
+
+https://zenn.dev/mpyw/articles/rdb-advisory-locks
+
+## MySQL
+
+- デフォルトの `REPEATABLE READ` から `READ COMMITTED` に変更して使用せよ。
+- もし `REPEATABLE READ` のまま使用する場合， **ギャップロック** に注意せよ。 **レコードロックの空振り** で意図せず発生させてしまわないように注意。
+- `SERIALIZABLE` は並列実行性が著しく落ちるため，実用性は薄い。
+- `READ UNCOMMITTED` の出番は基本的には無い。
+
+:::message
+オンプレミスの環境では，レプリケーションを高速化するためにバイナリログフォーマットを，デフォルトの物理レプリケーション方式の `ROW` から論理レプリケーション方式の　`STATEMENT` に切り替えて使用されている場合がある。 **`STATEMENT` である場合は，トランザクション分離レベルを `REPEATABLE READ` 以上にしなければならない制約がある。**<br><br>なお，独自フォーマットで物理レプリケーションを行っている AWS Aurora 等の場合は問題ない。
+:::
+
+## Postgres
+
+- デフォルトの `READ COMMITTED` のまま使用せよ。
+- 競合頻度が低い場合， `REPEATABLE READ` 以上で観測される **楽観ロック** の振る舞いに身を任せたほうがパフォーマンスが出る場合があると考えられる。トレードオフとして，リトライもしくはリトライを促すための処理をアプリケーション側で書く必要となる。
+  - 業務システムの管理画面等では多少活躍の機会はあるか？と思われたが， `NO WAIT` を付ければそれだけでロック読み取りの欠点であるブロッキングは排除できるので，あまり明確な優位性は無いと感じられる。
+  - 特に `SERIALIZABLE` についてはチューニングの知識も求められるため，インフラも含めるとかえって学習コストが上がってしまう懸念がある。無理をして使うよりは，素直に `READ COMMITTED` で Locking Read を用いるほうが汎用性は高い。
+
+# 謝辞
+
+この記事を執筆するにあたり， Twitter で相談に乗っていただいた皆様に感謝いたします。
+以下敬称略
+
+- **[@zyake](https://twitter.com/zyake)**
+- [@KentarouTakeda](https://twitter.com/KentarouTakeda)
+- [@soudai1025](https://twitter.com/soudai1025)
+- [@sji_ch](https://twitter.com/sji_ch)
+- [@hmatsu47](https://twitter.com/hmatsu47)
