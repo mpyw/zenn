@@ -1,6 +1,6 @@
 ---
 title: "MySQL/Postgres におけるトランザクション分離レベルと発生するアノマリーを整理する"
-emoji: "🔒"
+emoji: "🧱"
 type: "tech"
 topics: ["database", "transaction", "isolation", "postgresql", "mysql"]
 published: true
