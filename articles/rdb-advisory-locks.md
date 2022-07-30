@@ -6,6 +6,10 @@ topics: ["postgresql", "postgres", "mysql", "database", "redis"]
 published: true
 ---
 
+トランザクション分離レベルについての教養があったほうがこの記事の内容を理解しやすいため，必要に応じてまず以下を参照されたい。
+
+https://zenn.dev/mpyw/articles/rdb-transaction-isolations
+
 # 背景
 
 以前， Qiita で以下の記事を投稿した。今回の議題に直接的な関係はないが，関連している部分があるため引用する。
