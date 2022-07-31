@@ -262,6 +262,26 @@ https://zenn.dev/mpyw/articles/rdb-advisory-locks
   - 業務システムの管理画面等では多少活躍の機会はあるか？と思われたが， `NO WAIT` を付ければそれだけでロック読み取りの欠点であるブロッキングは排除できるので，あまり明確な優位性は無いと感じられる。
   - 特に `SERIALIZABLE` についてはチューニングの知識も求められるため，インフラも含めるとかえって学習コストが上がってしまう懸念がある。無理をして使うよりは，素直に `READ COMMITTED` で Locking Read を用いるほうが汎用性は高い。
 
+:::message
+唯一 `REPEATABLE READ` の更新競合検査が明確に適していると言えるのが， **失敗する可能性が高い複数のトランザクションが並行処理され， 1 人だけが勝ち残って更新をコミットすればよい** とき。 
+
+```yaml
+# Locking Read で読み込んだあと， 抽選で勝ち残った場合は結果をコミット
+T1: LockingRead---Rollback
+T2:                       LockingRead---Commit
+T3:                                           LockingRead---Rollback
+```
+
+```yaml
+# Consistent Read で読み込んだあと， 抽選で勝ち残った場合は結果をコミット
+T1: ConsistentRead---Rollback
+T2: ConsistentRead---Commit
+T3: ConsistentRead---Error
+```
+
+ブロッキング（`NO WAIT` の場合もリトライ）が発生しない点で明らかに後者に分がある。ちょうどアプリケーションでも楽観ロックを実装したくなる場面だが，この仕組みに乗っかっておけば自前で実装せずに済む点が大きなアドバンテージとなるだろう。
+:::
+
 # 謝辞
 
 この記事を執筆するにあたり， Twitter で相談に乗っていただいた皆様に感謝いたします。
