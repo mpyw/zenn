@@ -229,7 +229,7 @@ https://www.postgresql.jp/docs/12/transaction-iso.html
 
 #### 総評
 
-Postgres は `READ COMMITTED` までは MySQL に似た動きをする一方， `REPEATABLE READ` 以上では悲観ロックに加えて楽観ロックの仕組みも RDBMS 側に取り入れている。 `SERIALIZABLE` も実用的に使用できる。但しチューニングのために結局気をつけることが増える上に，高頻度な更新処理には適さないため，活躍できるシーンは限られると考えられる。
+Postgres は `READ COMMITTED` までは MySQL に似た動きをする一方， `REPEATABLE READ` 以上では悲観ロックに加えて **楽観ロック** の仕組みも RDBMS 側に取り入れている。 `SERIALIZABLE` も実用的に使用できる。但しチューニングのために結局気をつけることが増える上に，高頻度な更新処理には適さないため，活躍できるシーンは限られると考えられる。
 
 # どのトランザクション分離レベルを選択すればよいか？<br>ロック戦略はどうすればよいか？
 
@@ -245,7 +245,9 @@ https://zenn.dev/mpyw/articles/rdb-advisory-locks
 ## MySQL
 
 - デフォルトの `REPEATABLE READ` から `READ COMMITTED` に変更して使用せよ。
-- もし `REPEATABLE READ` のまま使用する場合， **ギャップロック** に注意せよ。 **レコードロックの空振り** で意図せず発生させてしまわないように注意。
+- もし `REPEATABLE READ` のまま使用する場合，
+  - **ギャップロック** に注意せよ。 **レコードロックの空振り** で意図せず発生させてしまわないように注意。
+  - **Consistent Read と Locking Read/Write の混在** に注意せよ。一貫性が欲しい部分でそれらを併用してはならない。
 - `SERIALIZABLE` は並列実行性が著しく落ちるため，実用性は薄い。
 - `READ UNCOMMITTED` の出番は基本的には無い。
 
