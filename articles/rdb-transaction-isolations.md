@@ -140,7 +140,7 @@ MySQL は以下のような特徴を持つ。
   - Lost Update, Write Skew, Observe Skew という直列化異常を全て防ぐことができる。逆に言えば，これらを防ぎたければ Locking Read または `SERIALIZABLE` 分離レベルを使用しなければならない。
 
 :::message alert
-**`REPEATABLE READ` 以上でも，Locking Read/Write では `READ COMMITTED` 相当の動作になってしまう仕様となっている。** またそれゆえに，**`REPEATABLE READ` でも Lost Update は発生する。**
+**`REPEATABLE READ` 以上でも，Locking Read/Write では `READ COMMITTED` 相当の動作になってしまう仕様となっている。** それゆえに，Consistent Read を併用した場合には **`REPEATABLE READ` でも Lost Update は発生する。**
 - Consistent Read だけをしている限りでは，スナップショットバージョンが固定されているので，読み取り不整合は発生しない。
 - Locking Read/Write だけをしている限りでは， **ギャップロック** があるため，読み取り不整合は発生しない。
 - **Consistent Read と Locking Read/Write の間に整合性はない。** Consistent Read では現れなかった変更が， Locking Read/Write で現れてしまう場合がある。これは複数回実行した場合も該当する。つまり，以下のような状況があり得る。
