@@ -102,7 +102,7 @@ ANSI 定義より後に新しく登場したものは太字で表現する。ANS
 
 | 現象＼分離レベル                                | READ<br>UNCOMMITTED | READ<br>COMMITTED |  **REPEATABLE READ**<br>**[Default]**   | SERIALIZABLE |
 |:----------------------------------------|:-------------------:|:-----------------:|:---------------------------------------:|:------------:|
-| Dirt Write                              |          ✅          |         ✅         |                    ✅                    |      ✅       |
+| Dirty Write                             |          ✅          |         ✅         |                    ✅                    |      ✅       |
 | Dirty Read                              |          ❌          |         ✅         |                    ✅                    |      ✅       |
 | Fuzzy Read<br>Phantom Read<br>Read Skew |          ❌          |         ❌         | 🔺<br>**Broken on**<br>**Locking Read** |      ✅       |
 | Cursor Lost Update                      |          ❌          |         ✅         |                    ✅                    |      ✅       |
