@@ -143,6 +143,7 @@ MySQL は以下のような特徴を持つ。
   - Lost Update, Write Skew, Observe Skew という直列化異常を全て防ぐことができる。逆に言えば，これらを防ぎたければ Locking Read または `SERIALIZABLE` 分離レベルを使用しなければならない。
 
 :::message alert
+##### 分離レベルのダウングレードに注意！
 **`REPEATABLE READ` 以上でも，Locking Read/Write では `READ COMMITTED` 相当の動作になってしまう仕様となっている。** それゆえに，Consistent Read を併用した場合には **`REPEATABLE READ` でも Lost Update は発生する。**
 - Consistent Read だけをしている限りでは，スナップショットバージョンが固定されているので，読み取り不整合は発生しない。
 - Locking Read/Write だけをしている限りでは， **ギャップロック** があるため，読み取り不整合は発生しない。
@@ -158,6 +159,7 @@ SELECT COUNT(*) FROM example FOR UPDATE; -- 101
 :::
 
 :::message
+##### ギャップロックの弊害
 `SERIALIZABLE` 以上では，ギャップロックがあることによってデッドロックが発生する機会が増加する弊害がある。 **レコードロックの空振りがギャップロックを引き起こすこともある。** またギャップロックの実装上の都合で存在する **ネクストキーロック** は，直感的なロック範囲よりも広い範囲をロックしてしまうことがある。
 
 - [ネクストキーロックとは | ソフトウェア雑記](https://softwarenote.info/p1067/)
@@ -191,7 +193,9 @@ MySQL は MVCC のための Snapshot Isolation を採用しつつも，基本的
 | Locking Read/Write |    レコードロック     |        レコードロック<br>**更新競合検査**         | レコードロック<br>**更新競合検査**<br>**SIRead ロック** |
 
 :::message
-**SIRead ロック (Snapshot Isolation Read ロック)** とは，直列化異常検知のための **楽観ロック** を指す。 `SELECT` したデータを SIRead ロックと称して検知のためにマーキングし，後から参照関係をトラバーサルできるようにしておく。また SIRead ロックを取り入れた Snapshot Isolation (SI) は，  **SSI (Serializable Snapshot Isolation)** と呼ばれる。
+##### SIRead ロックとは？
+- **SIRead ロック (Snapshot Isolation Read ロック)** とは，直列化異常検知のための **楽観ロック** を指す。 `SELECT` したデータを SIRead ロックと称して検知のためにマーキングし，後から参照関係をトラバーサルできるようにしておく。
+- SIRead ロックを取り入れた Snapshot Isolation (SI) は，  **SSI (Serializable Snapshot Isolation)** と呼ばれる。
 :::
 
 :::message
@@ -226,7 +230,9 @@ Postgres は以下のような特徴を持つ。
   - Lost Update, Write Skew, Observe Skew という直列化異常を全て防ぐことができる。逆に言えば，これらを防ぎたければ Locking Read または `SERIALIZABLE` 分離レベルを使用しなければならない。
 
 :::message
-`REPEATABLE READ` 以上では，更新競合検査と SIRead ロックによってエラーが発生する機会が増えるので，キャッチした上でリトライするなど適切にエラーハンドリングする必要がある。またいくつかチューニングするための留意事項があり，何も考えずに利用していきなり性能を発揮できるわけではない。詳しくは以下の公式マニュアルの下部を参照。
+##### 更新競合検査および SIRead ロックの弊害
+- `REPEATABLE READ` 以上では，更新競合検査によってエラーが発生する機会が増えるので，キャッチした上でリトライするなど適切にエラーハンドリングする必要がある。
+- 特に `SERIALIZABLE` では SIRead ロック固有のチューニング知識も必要とされ，何も考えずに利用していきなり性能を発揮できるわけではない。詳しくは以下の公式マニュアルの下部を参照。
 :::
 
 https://www.postgresql.jp/docs/12/transaction-iso.html
@@ -256,7 +262,9 @@ https://zenn.dev/mpyw/articles/rdb-advisory-locks
 - `READ UNCOMMITTED` の出番は基本的には無い。
 
 :::message
-オンプレミスの環境では，レプリケーションを高速化するためにバイナリログフォーマットを，デフォルトの物理レプリケーション方式の `ROW` から論理レプリケーション方式の `STATEMENT` に切り替えて使用されている場合がある。 **`STATEMENT` である場合は，トランザクション分離レベルを `REPEATABLE READ` 以上にしなければならない制約がある。**<br><br>なお，独自フォーマットで物理レプリケーションを行っている AWS Aurora 等の場合は `READ COMMITTED` でもレプリケーションが高速に実現されているため，レプリケーション高速化目的でわざわざ `REPEATABLE READ` を選択する必要はない。
+##### バイナリログ形式に由来する分離レベルの制約
+- オンプレミスの環境では，レプリケーションを高速化するためにバイナリログフォーマットを，デフォルトの物理レプリケーション方式の `ROW` から論理レプリケーション方式の `STATEMENT` に切り替えて使用されている場合がある。 **`STATEMENT` である場合は，トランザクション分離レベルを `REPEATABLE READ` 以上にしなければならない制約がある。**
+- 独自フォーマットで物理レプリケーションを行っている AWS Aurora 等の場合は `READ COMMITTED` でもレプリケーションが高速に実現されているため，レプリケーション高速化目的でわざわざ `REPEATABLE READ` を選択する必要はない。
 :::
 
 ## Postgres
@@ -267,6 +275,7 @@ https://zenn.dev/mpyw/articles/rdb-advisory-locks
   - 特に `SERIALIZABLE` についてはチューニングの知識も求められるため，インフラも含めるとかえって学習コストが上がってしまう懸念がある。無理をして使うよりは，素直に `READ COMMITTED` で Locking Read を用いるほうが汎用性は高い。
 
 :::message
+##### 更新競合検査のユースケース
 唯一 `REPEATABLE READ` の更新競合検査が明確に適していると言えるのが， **失敗する可能性が高い複数のトランザクションが並行処理され， 1 人だけが勝ち残って更新をコミットすればよい** とき。 
 
 ```yaml
