@@ -4,9 +4,9 @@
 
 - **[🧱 MySQL/Postgres におけるトランザクション分離レベルと発生するアノマリーを整理する](https://zenn.dev/mpyw/articles/rdb-transaction-isolations)
   &nbsp;[[✍Edit]️](./articles/rdb-transaction-isolations.md)**
-- **[🎓 Postgres と MySQL における id, created_at, updated_at に関するベストプラクティス](https://zenn.dev/mpyw/articles/rdb-ids-and-timestamps-best-practices.md)
+- **[🎓 Postgres と MySQL における id, created_at, updated_at に関するベストプラクティス](https://zenn.dev/mpyw/articles/rdb-ids-and-timestamps-best-practices)
   &nbsp;[[✍Edit]️](./articles/rdb-ids-and-timestamps-best-practices.md)**
-- **[🔒 排他制御のためだけに Redis 渋々使ってませんか？データベース単独でアドバイザリーロックできるよ！](https://zenn.dev/mpyw/articles/rdb-advisory-locks.md)
+- **[🔒 排他制御のためだけに Redis 渋々使ってませんか？データベース単独でアドバイザリーロックできるよ！](https://zenn.dev/mpyw/articles/rdb-advisory-locks)
   &nbsp;[[✍Edit]️](./articles/rdb-advisory-locks.md)**
 
 ## PHP 
