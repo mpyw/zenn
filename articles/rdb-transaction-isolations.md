@@ -99,8 +99,8 @@ ANSI 定義より後に新しく登場したものは太字で表現する。ANS
 | `SELECT ... FOR UPDATE`          | Locking Read    | Current  | Exclusive |
 | `INSERT`<br>`UPDATE`<br>`DELETE` | Write           | Current  | Exclusive |
 
-- **一貫性読み取り (Consistent Read)** では，更新時に参照するデータ本体とは隔離された読み取り専用の **スナップショット** をロックせずに取得する。
-- **ロック読み取り (Locking Read)** では，データ本体をロックして取得する。
+- **一貫性読み取り (Consistent Read)** では，最新のデータ本体に依存しないある時点での **スナップショット** をロックせずに取得する。
+- **ロック読み取り (Locking Read)** では，最新のデータ本体をロックして取得する。
 
 ## MySQL
 
