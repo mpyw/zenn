@@ -84,17 +84,17 @@ ANSI 定義より後に新しく登場したものは太字で表現する。ANS
 | Write Skew                              | トランザクション $T_1$ が読み取った $x$ を使って $y$ の変更するとき，<br>トランザクション $T_2$ が読み取った $y$ の値を使って $x$ を変更してしまい，<br>**すれ違いざまに相手の変更前の値に依存した更新を行ってしまう**                    |
 | Observe Skew                            | 2 つだけであれば直列化可能であったはずのトランザクション $T_1$ $T_2$ の<br>**途中状態**を $T_3$ が観測することによって **循環参照** が発生し，観測者を含めた<br>**$T_1$ $T_2$ $T_3$ の並び順を矛盾なく確定させることができなくなってしまう** |
 
-- MySQL/Postgres とも， **Snapshot Isolation** が採用されているがゆえに Fuzzy Read と Phantom Read はセットで考えることができ，新規・更新・削除の区別を意識する機会は少ない。ここでは簡単のため 1 つにまとめる。
+- MySQL/Postgres とも， **MVCC (Multi Version Concurrency Control)** が採用されているがゆえに Fuzzy Read と Phantom Read はセットで考えることができ，新規・更新・削除の区別を意識する機会は少ない。ここでは簡単のため 1 つにまとめる。
 - 2 値の読み取り整合性違反となる Read Skew については，1 つの値を複数回読み取る際の不整合である Fuzzy Read と現象の内容が似ている。これも簡単のために 1 つにまとめる。
 - Observe Skew については Read Only Anomaly, Read Only Skew, Batch Processing などさまざまな呼称が存在するが，どれも意味が伝わりにくいので，この記事で Observe Skew という名称を新しく提案する。（論文の中で提案されているものではない）
 
-#### Snapshot Isolation
+#### MVCC
 
 発行する SQL 文の種類によって，スナップショットと現在のデータ本体 (Current) のどちらを参照するかが異なっている。
 
 | 文法                               | アクション           | 参照先      | ロック       |
 |:---------------------------------|:----------------|:---------|:----------|
-| `SELECT`                         | Consistent Read | Snapshot | -         |
+| `SELECT`                         | Consistent Read | **Snapshot** | -         |
 | `SELECT ... FOR SHARE`           | Locking Read    | Current  | Shared    |
 | `SELECT ... FOR UPDATE`          | Locking Read    | Current  | Exclusive |
 | `INSERT`<br>`UPDATE`<br>`DELETE` | Write           | Current  | Exclusive |
@@ -175,7 +175,7 @@ https://dev.mysql.com/doc/refman/8.0/ja/innodb-transaction-isolation-levels.html
 
 #### 総評
 
-MySQL は MVCC のための Snapshot Isolation を採用しつつも，基本的な戦略を **「悲観ロック」** **「後勝ちトランザクション」** に寄せているシンプルな RDBMS だと言える。 Locking Read で分離レベルをダウングレードさせるなど，思い切った設計にしている面はあるが，それらを受け入れた上で気をつけて使いたい。 `SERIALIZABLE` は悲観ロック処理が重すぎてほぼ実用性なし。
+MySQL は MVCC を採用しつつも，基本的な戦略を **「悲観ロック」** **「後勝ちトランザクション」** に寄せているシンプルな RDBMS だと言える。 Locking Read で分離レベルをダウングレードさせるなど，思い切った設計にしている面はあるが，それらを受け入れた上で気をつけて使いたい。 `SERIALIZABLE` は悲観ロック処理が重すぎてほぼ実用性なし。
 
 ## Postgres
 
