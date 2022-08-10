@@ -29,7 +29,9 @@ https://qiita.com/kumagi/items/1dc1a91ec007365ac694
 
 https://qiita.com/kumagi/items/5ef5e404546736ebac49
 
-上の記事中で言及されている 2-Phase Locking (2PL) に関する説明としては，英語版の Wikipedia が分かりやすい。
+なお上の記事中で言及されている 2-Phase Locking (2PL) に関する説明としては，本人の解説記事および英語版の Wikipedia が分かりやすい。
+
+https://qiita.com/kumagi/items/d3c671ddd1aa5648dd91
 
 https://en.wikipedia.org/wiki/Two-phase_locking
 
