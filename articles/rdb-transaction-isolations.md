@@ -257,7 +257,7 @@ Postgres は `READ COMMITTED` までは MySQL に似た動きをする一方， 
 ## 共通
 
 - 基本的には **`READ COMMITTED`** をベースにした上で **Locking Read** を活用せよ。通常は **`NO WAIT`** オプションを付与してブロッキングを回避し，即時失敗させるとよい。
-- Locking Read は空振りするとレコードロックが取得できないので，その懸念がある場合は **アドバイザリーロック** を併用せよ。
+- Locking Read は空振りするとレコードロックが取得できないので，その懸念がある場合は **アドバイザリーロック** の併用を検討するとよい。
 
 https://zenn.dev/mpyw/articles/rdb-advisory-locks
 
