@@ -181,7 +181,7 @@ MySQL は MVCC を採用しつつも，基本的な戦略を **「悲観ロッ�
 
 #### Anomaly
 
-|                現象＼分離レベル                 | READ COMMITTED |                  REPEATABLE READ                  |                   SERIALIZABLE                    |
+|                現象＼分離レベル                 | **READ COMMITTED**<br>**[Default]** |                  REPEATABLE READ                  |                   SERIALIZABLE                    |
 |:---------------------------------------:|:--------------:|:-------------------------------------------------:|:-------------------------------------------------:|
 |               Dirty Write               |       ✅        |                         ✅                         |                         ✅                         |
 |               Dirty Read                |       ✅        |                         ✅                         |                         ✅                         |
@@ -193,7 +193,7 @@ MySQL は MVCC を採用しつつも，基本的な戦略を **「悲観ロッ�
 
 #### Locking
 
-| アクション＼分離レベル        | READ COMMITTED | **REPEATABLE READ**<br>**[Default]** |              SERIALIZABLE               |
+| アクション＼分離レベル        | **READ COMMITTED**<br>**[Default]** | REPEATABLE READ |              SERIALIZABLE               |
 |:-------------------|:--------------:|:------------------------------------:|:---------------------------------------:|
 | Consistent Read    |       -        |                  -                   |             **SIRead ロック**              |
 | Locking Read/Write |    レコードロック     |        レコードロック<br>**更新競合検査**         | レコードロック<br>**更新競合検査**<br>**SIRead ロック** |
