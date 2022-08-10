@@ -110,11 +110,13 @@ ANSI 定義より後に新しく登場したものは太字で表現する。ANS
 |:----------------------------------------|:-------------------:|:-----------------:|:---------------------------------------:|:------------:|
 | Dirty Write                             |          ✅          |         ✅         |                    ✅                    |      ✅       |
 | Dirty Read                              |          ❌          |         ✅         |                    ✅                    |      ✅       |
-| Fuzzy Read<br>Phantom Read<br>Read Skew |          ❌          |         ❌         | 🔺<br>**Broken on**<br>**Locking Read** |      ✅       |
+| Fuzzy Read<br>Phantom Read<br>Read Skew |          ❌          |         ❌         | 🔺<br>**Broken on**<br>**Mixed Read** |      ✅       |
 | Cursor Lost Update                      |          ❌          |         ✅         |                    ✅                    |      ✅       |
 | Lost Update                             |          ❌          |         ❌         |                    ❌                    |      ✅       |
 | Write Skew                              |          ❌          |         ❌         |                    ❌                    |      ✅       |
 | Observe Skew                            |          ❌          |         ❌         |                    ❌                    |      ✅       |
+
+ここでの Mixed Read とは，  Consistent Read と Locking Read/Write の混在を指す。
 
 #### Locking
 
@@ -150,10 +152,10 @@ MySQL は以下のような特徴を持つ。
 
 :::message alert
 ##### 分離レベルのダウングレードに注意！
-**`REPEATABLE READ` 以上でも，Locking Read/Write では `READ COMMITTED` 相当の動作になってしまう仕様となっている。** それゆえに，Consistent Read を併用した場合には **`REPEATABLE READ` でも Lost Update は発生する。**
-- Consistent Read だけをしている限りでは，スナップショットバージョンが固定されているので，読み取り不整合は発生しない。
-- Locking Read/Write だけをしている限りでは， **ギャップロック** があるため，読み取り不整合は発生しない。
-- **Consistent Read と Locking Read/Write の間に整合性はない。** Consistent Read では現れなかった変更が， Locking Read/Write で現れてしまう場合がある。これは複数回実行した場合も該当する。つまり，以下のような状況があり得る。
+**`REPEATABLE READ` 以上でも，Locking Read/Write では `READ COMMITTED` でロックを取る相当の動作になってしまう仕様となっている。**
+- Consistent Read だけをしている限りでは， MVCC によりスナップショットバージョンが固定されているので， 3 種の読み取り不整合はいずれも発生しない。
+- Locking Read/Write だけをしている限りでは，  **レコードロック** が Fuzzy Read と Read Skew を防ぎ， **ギャップロック** が Phantom Read を防ぐため， 3 種の読み取り不整合および Lost Update ははいずれも発生しない。
+- **Consistent Read と Locking Read/Write の間に整合性はないため， これらの不整合が全て起こる可能性がある。** Consistent Read では現れなかった変更が， Locking Read/Write で現れてしまう場合がある。これは複数回実行した場合も該当する。例えば，以下のような状況があり得る。
 
 ```sql
 BEGIN;
