@@ -143,7 +143,7 @@ MySQL は以下のような特徴を持つ。
 - `REPEATABLE READ` 以上では，
   - レコードロックでは担保できない現在レコードが存在しない範囲のロックに関しては， **ギャップロック** で解決している。
   - **`SELECT` 実行で取得したスナップショットバージョン** を，自身が変更しない限りはトランザクションの終了まで保持し続ける。同じクエリに対しては同じ結果が保証される。
-  - もし **`BEGIN` の代わりに `START TRANSACTION WITH CONSISTENT SNAPSHOT` を使用すると，トランザクション開始と同時にスナップショットを取得する。** 但し，スナップショット取得後の動作に関しては通常の `REPEATABLE READ` との差異は無い。
+  - もし **`BEGIN` の代わりに `START TRANSACTION WITH CONSISTENT SNAPSHOT` を使用すると，トランザクション開始と同時にスナップショットを取得する。** 但し，スナップショット取得後の動作に関しては通常の `REPEATABLE READ` との差異は無い。即ち， 論文で提唱されている SNAPSHOT ISOLATION 分離レベルを満たしているわけではなく，この点は後述されるように Postgres の `REPEATABLE READ` とは明確に異なる。
 - `SERIALIZABLE` では， 
   - **Consistent Read はすべて Locking Read に変換される** ため，実質的に存在しない。
   - Lost Update, Write Skew, Observe Skew という直列化異常を全て防ぐことができる。逆に言えば，これらを防ぎたければ Locking Read または `SERIALIZABLE` 分離レベルを使用しなければならない。
@@ -231,6 +231,7 @@ Postgres は以下のような特徴を持つ。
 - `REPEATABLE READ` 以上では，
   - **トランザクション開始と同時に** スナップショットを取得し，自身が変更しない限りはトランザクションの終了まで保持し続ける。
   - レコードロックでは担保できない現在レコードが存在しない範囲のロックに関しては， **更新競合検査** で解決している。更新しようとした内容が更新競合検査に引っかかった場合，トランザクションを更新競合エラーとして中止する。
+  - これら 2 つの特性があることにより， Postgres の `REPEATABLE READ` は論文で提唱されている SNAPSHOT ISOLATION 分離レベルも満たしていると言える。
 - `SERIALIZABLE` では，
   - レコードロックと更新競合検査でも検知できない直列化異常に関しては， **SIRead ロック** で解決している。更新しようとした内容が SIRead ロックに引っかかった場合，トランザクションを直列化異常エラーとして中止する。
   - Lost Update, Write Skew, Observe Skew という直列化異常を全て防ぐことができる。逆に言えば，これらを防ぎたければ Locking Read または `SERIALIZABLE` 分離レベルを使用しなければならない。
