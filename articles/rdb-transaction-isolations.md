@@ -370,3 +370,4 @@ SELECT * FROM example WHERE id BETWEEN 11 AND 15 FOR UPDATE
 - [@sji_ch](https://twitter.com/sji_ch)
 - [@hmatsu47](https://twitter.com/hmatsu47)
 - [@utsushiiro](https://twitter.com/utsushiiro)
+- [@neko_han25](https://twitter.com/neko_han25)
