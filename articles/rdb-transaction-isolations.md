@@ -155,7 +155,7 @@ MySQL は以下のような特徴を持つ。
 **`REPEATABLE READ` 以上でも，Locking Read/Write では `READ COMMITTED` でロックを取る相当の動作になってしまう仕様となっている。**
 - Consistent Read だけをしている限りでは， MVCC によりスナップショットバージョンが固定されているので， 3 種の読み取り不整合はいずれも発生しない。
 - Locking Read/Write だけをしている限りでは，  **レコードロック** が Fuzzy Read と Read Skew を防ぎ， **ギャップロック** が Phantom Read を防ぐため， 3 種の読み取り不整合および Lost Update はいずれも発生しない。
-- **Consistent Read と Locking Read/Write の間に整合性はないため， これらの不整合が全て起こる可能性がある。** Consistent Read では現れなかった変更が， Locking Read/Write で現れてしまう場合がある。これは複数回実行した場合も該当する。例えば，以下のような状況があり得る。
+- **Consistent Read と Locking Read/Write の間に整合性はないため， これらの併用で不整合が全て起こる可能性がある。** Consistent Read では現れなかった変更が， Locking Read/Write で現れてしまう場合がある。これは複数回実行した場合も該当する。例えば，以下のような状況があり得る。
 
 ```sql
 BEGIN;
