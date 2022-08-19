@@ -13,6 +13,12 @@ published: true
 
 # 理論面の前提知識
 
+**2022-08-19 追記:**<br>社内勉強会向けのスライドを作成しました。先にスライドを見てから，引用文献およびこの記事を読むと理解が深まると思います。
+
+https://speakerdeck.com/mpyw/postgres-niokerutoranzakusiyonfen-li-reberu
+
+----
+
 まず ANSI 定義の古典的な定義を聞いたことが無い方は，以下のリンクを参照されたい。 ANSI 定義に対応する解説はこれらのサイト以外にもたくさんあるため，自分にとって読みやすいと感じる情報をあたってほしい。（既に熟知されている方は十分）
 
 https://itmanabi.com/transaction-isolation/
