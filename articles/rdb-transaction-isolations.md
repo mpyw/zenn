@@ -194,7 +194,7 @@ MySQL は MVCC を採用しつつも，基本的な戦略を **「悲観的制�
 |               Dirty Write               |                  ✅                  |                         ✅                         |                         ✅                         |
 |               Dirty Read                |                  ✅                  |                         ✅                         |                         ✅                         |
 | Fuzzy Read<br>Phantom Read<br>Read Skew |                  ❌                  |                         ✅                         |                         ✅                         |
-|           Cursor Lost Update            |                  ❌                  |                         ✅                         |                         ✅                         | 
+|           Cursor Lost Update            |                  ✅                  |                         ✅                         |                         ✅                         | 
 |               Lost Update               |                  ❌                  | ✅<br>**Concurrent Update**<br>**Error Detection** | ✅<br>**Concurrent Update**<br>**Error Detection** |
 |               Write Skew                |                  ❌                  |                         ❌                         | ✅<br>**R/W Dependencies**<br>**Error Detection**  |
 |              Observe Skew               |                  ❌                  |                         ❌                         | ✅<br>**R/W Dependencies**<br>**Error Detection**  |
