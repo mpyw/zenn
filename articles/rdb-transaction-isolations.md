@@ -85,7 +85,7 @@ ANSI 定義より後に新しく登場したものは太字で表現する。ANS
 | Dirty Write                             | 他のトランザクションでコミットされていない変更を上書きしてしまう                                                                                                                      |
 | Dirty Read                              | 他のトランザクションでコミットされていない変更を参照してしまう                                                                                                                       |
 | Fuzzy Read<br>Phantom Read<br>Read Skew | 他のトランザクションでコミットされた変更を参照してしまう                                                                                                                          |
-| Cursor Lost Update                      | 他のトランザクションで **Locking Read によって読み取られた後**，<br>コミットされた変更を上書きしてしまう                                                                                       |
+| Cursor Lost Update                      | 他のトランザクションで **Locking Read によって読み取られているにも関わらず**，<br>コミットされた変更を上書きしてしまう                                                                                |
 | Lost Update                             | 他のトランザクションでコミットされた変更を上書きしてしまう                                                                                                                         |
 | Write Skew                              | トランザクション $T_1$ が読み取った $x$ を使って $y$ の変更するとき，<br>トランザクション $T_2$ が読み取った $y$ の値を使って $x$ を変更してしまい，<br>**すれ違いざまに相手の変更前の値に依存した更新を行ってしまう**                    |
 | Observe Skew                            | 2 つだけであれば直列化可能であったはずのトランザクション $T_1$ $T_2$ の<br>**途中状態**を $T_3$ が観測することによって **循環参照** が発生し，観測者を含めた<br>**$T_1$ $T_2$ $T_3$ の並び順を矛盾なく確定させることができなくなってしまう** |
@@ -98,12 +98,12 @@ ANSI 定義より後に新しく登場したものは太字で表現する。ANS
 
 発行する SQL 文の種類によって，スナップショットと現在のデータ本体 (Current) のどちらを参照するかが異なっている。
 
-| 文法                               | アクション           | 参照先      | ロック       |
-|:---------------------------------|:----------------|:---------|:----------|
+| 文法                               | アクション           | 参照先          | ロック       |
+|:---------------------------------|:----------------|:-------------|:----------|
 | `SELECT`                         | Consistent Read | **Snapshot** | -         |
-| `SELECT ... FOR SHARE`           | Locking Read    | Current  | Shared    |
-| `SELECT ... FOR UPDATE`          | Locking Read    | Current  | Exclusive |
-| `INSERT`<br>`UPDATE`<br>`DELETE` | Write           | Current  | Exclusive |
+| `SELECT ... FOR SHARE`           | Locking Read    | Current      | Shared    |
+| `SELECT ... FOR UPDATE`          | Locking Read    | Current      | Exclusive |
+| `INSERT`<br>`UPDATE`<br>`DELETE` | Write           | Current      | Exclusive |
 
 - **一貫性読み取り (Consistent Read)** では，最新のデータ本体に依存しないある時点での **スナップショット** をロックせずに取得する。
 - **ロック読み取り (Locking Read)** では，最新のデータ本体をロックして取得する。
@@ -112,15 +112,15 @@ ANSI 定義より後に新しく登場したものは太字で表現する。ANS
 
 #### Anomaly
 
-| 現象＼分離レベル                                | READ<br>UNCOMMITTED | READ<br>COMMITTED |  **REPEATABLE READ**<br>**[Default]**   | SERIALIZABLE |
-|:----------------------------------------|:-------------------:|:-----------------:|:---------------------------------------:|:------------:|
-| Dirty Write                             |          ✅          |         ✅         |                    ✅                    |      ✅       |
-| Dirty Read                              |          ❌          |         ✅         |                    ✅                    |      ✅       |
+| 現象＼分離レベル                                | READ<br>UNCOMMITTED | READ<br>COMMITTED | **REPEATABLE READ**<br>**[Default]**  | SERIALIZABLE |
+|:----------------------------------------|:-------------------:|:-----------------:|:-------------------------------------:|:------------:|
+| Dirty Write                             |          ✅          |         ✅         |                   ✅                   |      ✅       |
+| Dirty Read                              |          ❌          |         ✅         |                   ✅                   |      ✅       |
 | Fuzzy Read<br>Phantom Read<br>Read Skew |          ❌          |         ❌         | 🔺<br>**Broken on**<br>**Mixed Read** |      ✅       |
-| Cursor Lost Update                      |          ❌          |         ✅         |                    ✅                    |      ✅       |
-| Lost Update                             |          ❌          |         ❌         |                    ❌                    |      ✅       |
-| Write Skew                              |          ❌          |         ❌         |                    ❌                    |      ✅       |
-| Observe Skew                            |          ❌          |         ❌         |                    ❌                    |      ✅       |
+| Cursor Lost Update                      |          ✅          |         ✅         |                   ✅                   |      ✅       |
+| Lost Update                             |          ❌          |         ❌         |                   ❌                   |      ✅       |
+| Write Skew                              |          ❌          |         ❌         |                   ❌                   |      ✅       |
+| Observe Skew                            |          ❌          |         ❌         |                   ❌                   |      ✅       |
 
 ここでの Mixed Read とは，  Consistent Read と Locking Read/Write の混在を指す。
 
@@ -190,21 +190,21 @@ MySQL は MVCC を採用しつつも，基本的な戦略を **「悲観的制�
 #### Anomaly
 
 |                現象＼分離レベル                 | **READ COMMITTED**<br>**[Default]** |                  REPEATABLE READ                  |                   SERIALIZABLE                    |
-|:---------------------------------------:|:--------------:|:-------------------------------------------------:|:-------------------------------------------------:|
-|               Dirty Write               |       ✅        |                         ✅                         |                         ✅                         |
-|               Dirty Read                |       ✅        |                         ✅                         |                         ✅                         |
-| Fuzzy Read<br>Phantom Read<br>Read Skew |       ❌        |                         ✅                         |                         ✅                         |
-|           Cursor Lost Update            |       ✅        |                         ✅                         |                         ✅                         | 
-|               Lost Update               |       ❌        | ✅<br>**Concurrent Update**<br>**Error Detection** | ✅<br>**Concurrent Update**<br>**Error Detection** |
-|               Write Skew                |       ❌        |                         ❌                         | ✅<br>**R/W Dependencies**<br>**Error Detection**  |
-|              Observe Skew               |       ❌        |                         ❌                         | ✅<br>**R/W Dependencies**<br>**Error Detection**  |
+|:---------------------------------------:|:-----------------------------------:|:-------------------------------------------------:|:-------------------------------------------------:|
+|               Dirty Write               |                  ✅                  |                         ✅                         |                         ✅                         |
+|               Dirty Read                |                  ✅                  |                         ✅                         |                         ✅                         |
+| Fuzzy Read<br>Phantom Read<br>Read Skew |                  ❌                  |                         ✅                         |                         ✅                         |
+|           Cursor Lost Update            |                  ❌                  |                         ✅                         |                         ✅                         | 
+|               Lost Update               |                  ❌                  | ✅<br>**Concurrent Update**<br>**Error Detection** | ✅<br>**Concurrent Update**<br>**Error Detection** |
+|               Write Skew                |                  ❌                  |                         ❌                         | ✅<br>**R/W Dependencies**<br>**Error Detection**  |
+|              Observe Skew               |                  ❌                  |                         ❌                         | ✅<br>**R/W Dependencies**<br>**Error Detection**  |
 
 #### Locking
 
-| アクション＼分離レベル        | **READ COMMITTED**<br>**[Default]** | REPEATABLE READ |              SERIALIZABLE               |
-|:-------------------|:--------------:|:------------------------------------:|:---------------------------------------:|
-| Consistent Read    |       -        |                  -                   |             **SIRead ロック**              |
-| Locking Read/Write |    レコードロック     |        レコードロック<br>**更新競合検査**         | レコードロック<br>**更新競合検査**<br>**SIRead ロック** |
+| アクション＼分離レベル        | **READ COMMITTED**<br>**[Default]** |    REPEATABLE READ    |              SERIALIZABLE               |
+|:-------------------|:-----------------------------------:|:---------------------:|:---------------------------------------:|
+| Consistent Read    |                  -                  |           -           |             **SIRead ロック**              |
+| Locking Read/Write |               レコードロック               | レコードロック<br>**更新競合検査** | レコードロック<br>**更新競合検査**<br>**SIRead ロック** |
 
 :::message
 ##### SIRead ロックとは？
