@@ -453,31 +453,61 @@ https://github.com/laravel/framework/pull/48213
 `firstOrNew` は取得だけを行い，無かった場合のレコード作成は行わずに自分で `save` を実行してもらうメソッドですが，これに関しては以前のままです。そのため `firstOrNew` を利用する場合に限り， [私が書いたライブラリ](https://github.com/mpyw/laravel-retry-on-duplicate-key) はまだ以下のように活用する用途が残っていました。
 
 ```php
+// firstOrCreate っぽい動作をさせる場合
+$user = DB::retryOnDuplicateKey(function (
+    $user = User::firstOrNew(['email' => 'example@example.com']);
+    if (!$user->exists) {
+        $user->foo = 'foo';
+        $user->bar = 'bar';
+        $user->save();    
+    }
+    return $user;
+)};
+
+// updateOrCreate っぽい動作をさせる場合
 $user = DB::retryOnDuplicateKey(function (
     $user = User::firstOrNew(['email' => 'example@example.com']);
     $user->foo = 'foo';
     $user->bar = 'bar';
-    $user->save();
+    $user->save();    
     return $user;
 )};
 ```
 
-しかし殆どの場合 `firstOrCreate` `updateOrCreate` でカバーできますし，もし局所的に必要になったとしてもせいぜい以下のようなコードを書いておけば解決します。ゆえに，ライブラリとしての存在価値が無いに等しいのでアーカイブする方針は変わりません。
+しかし殆どの場合 `firstOrCreate` `updateOrCreate` でカバーできますし，もし局所的に必要になったとしてもせいぜい以下のようなコードを書いておけば解決します。以前と違って `UniqueConstraintViolationException` をキャッチすればいいだけなので，考えることは少なくて済みますね。ゆえに，ライブラリとしての存在価値が無いに等しいのでアーカイブする方針は変わりません。
 
 ```php
+// firstOrCreate っぽい動作をさせる場合
 $user = User::firstOrNew(['email' => 'example@example.com']);
-$user->foo = 'foo';
-$user->bar = 'bar';
+if (!$user->exists) {
+    try {
+        // saveOrFail() は save() をトランザクションでラップするメソッド
+        // Postgres において外側でトランザクションが外側で張られていることを考慮するなら必須
+        $user->foo = 'foo';
+        $user->bar = 'bar';
+        $user->saveOrFail();
+    } catch (UniqueConstraintViolationException) {
+        $user = User::query()
+            ->useWritePdo()
+            ->where(['email' => 'example@example.com'])
+            ->firstOrFail();
+    }
+}
 
+// updateOrCreate っぽい動作をさせる場合
+$user = User::firstOrNew(['email' => 'example@example.com']);
 try {
-    // saveOrFail() は save() をトランザクションでラップするメソッド
-    // Postgres において外側でトランザクションが外側で張られていることを考慮するなら必須
+    $user->foo = 'foo';
+    $user->bar = 'bar';
     $user->saveOrFail();
 } catch (UniqueConstraintViolationException) {
     $user = User::query()
         ->useWritePdo()
         ->where(['email' => 'example@example.com'])
         ->firstOrFail();
+    $user->foo = 'foo';
+    $user->bar = 'bar';
+    $user->save();
 }
 ```
 
