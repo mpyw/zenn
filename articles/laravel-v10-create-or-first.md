@@ -119,7 +119,7 @@ $user = DB::retryOnDuplicateKey(
 $user = User::createOrFirst(['email' => 'example@example.com']);
 ```
 
-ここにきて， **[`createOrFirst`](https://github.com/laravel/framework/blob/4989e6de076688ade265e2f1970ab6f0c1b60fcb/src/Illuminate/Database/Eloquent/Builder.php#L573-L587)** という機能が初めて登場しました。このメソッドの実装は以下のようになっています。さり気なく **`UnqueConstraintViolationException`** という例外クラスも登場し，以前は `QueryException` のエラーコードから判定する必要があった部分をフレームワーク側が巻き取ってくれています。
+ここにきて， **[`createOrFirst`](https://github.com/laravel/framework/blob/4989e6de076688ade265e2f1970ab6f0c1b60fcb/src/Illuminate/Database/Eloquent/Builder.php#L573-L587)** という機能が初めて登場しました。このメソッドの実装は以下のようになっています。さり気なく **`UniqueConstraintViolationException`** という例外クラスも登場し，以前は `QueryException` のエラーコードから判定する必要があった部分をフレームワーク側が巻き取ってくれています。
 
 > ```php
 > public function createOrFirst(array $attributes = [], array $values = [])
