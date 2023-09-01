@@ -537,6 +537,7 @@ class UniqueConstraint
     }
 }
 ```
+:::
 
 # まとめ
 
