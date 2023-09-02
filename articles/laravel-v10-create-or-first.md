@@ -228,7 +228,7 @@ https://www.postgresql.org/docs/current/sql-savepoint.html
 |:---|:-----------|:----------------------------------|
 | 開始 | `BEGIN`    | `SAVEPOINT <セーブポイント名>`            |
 | 確定 | `COMMIT`   | `RELEASE SAVEPOINT <セーブポイント名>`    |
-| 取消 | `ROLLBACK` | `ROLLBACK TO SAVEPOIT <セーブポイント名>` |
+| 取消 | `ROLLBACK` | `ROLLBACK TO SAVEPOINT <セーブポイント名>` |
 
 そして大事なのは以下の 2 点です。
 
