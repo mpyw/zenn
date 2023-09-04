@@ -9,10 +9,10 @@ published: true
 # TL;DR
 
 - `firstOrCreate()` `updateOrCreate()` という機能がもともと Eloquent に備わっていたが，これらはレースコンディションを考慮した実装になっていなかったため，大きなアクセス数が伴うプロダクションで安心して使うには少し工夫が必要な機能だった。
-- Laravel [v10.20.0](https://github.com/laravel/framework/releases/tag/v10.20.0) + [v10.21.0](https://github.com/laravel/framework/releases/tag/v10.21.0) + [v10.22.0](https://github.com/laravel/framework/releases/tag/v10.22.0) あたりでレースコンディションを考慮した `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
+- Laravel [v10.20.0](https://github.com/laravel/framework/releases/tag/v10.20.0) + [v10.21.0](https://github.com/laravel/framework/releases/tag/v10.21.0) + [v10.22.1](https://github.com/laravel/framework/releases/tag/v10.22.1) あたりでレースコンディションを考慮した `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
 
 :::message alert
-**`v10.20.0` `v10.21.0` は不完全な修正でバグを包含しているため，必ず `v10.22.0` 以降を使用してください。**
+**`v10.20.0` `v10.21.0` は不完全な修正でバグを包含しているため，必ず `v10.21.1` 以降を使用してください。**
 :::
 
 # はじめに
@@ -111,7 +111,7 @@ $user = DB::retryOnDuplicateKey(
 );
 ```
 
-# Laravel 10.22 以降ではどうなるか？
+# Laravel 10.22.1 以降ではどうなるか？
 
 ## `createOrFirst` および `UniqueConstraintViolationException` の登場
 
@@ -542,8 +542,8 @@ class UniqueConstraint
 # まとめ
 
 > - `firstOrCreate()` `updateOrCreate()` という機能がもともと Eloquent に備わっていたが，これらはレースコンディションを考慮した実装になっていなかったため，大きなアクセス数が伴うプロダクションで安心して使うには少し工夫が必要な機能だった。
-> - Laravel [v10.20.0](https://github.com/laravel/framework/releases/tag/v10.20.0) + [v10.21.0](https://github.com/laravel/framework/releases/tag/v10.21.0) + [v10.22.0](https://github.com/laravel/framework/releases/tag/v10.22.0) あたりでレースコンディションを考慮した `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
+> - Laravel [v10.20.0](https://github.com/laravel/framework/releases/tag/v10.20.0) + [v10.21.0](https://github.com/laravel/framework/releases/tag/v10.21.0) + [v10.22.1](https://github.com/laravel/framework/releases/tag/v10.22.1) あたりでレースコンディションを考慮した `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
 >
 > :::message alert
-> **`v10.20.0` `v10.21.0` は不完全な修正でバグを包含しているため，必ず `v10.22.0` 以降を使用してください。**
+> **`v10.20.0` `v10.21.0` は不完全な修正でバグを包含しているため，必ず `v10.22.1` 以降を使用してください。**
 > :::
