@@ -4,6 +4,7 @@ emoji: "🧱"
 type: "tech"
 topics: ["database", "transaction", "isolation", "postgresql", "mysql"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 # 読者対象

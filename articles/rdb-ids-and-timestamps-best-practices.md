@@ -4,6 +4,7 @@ emoji: "🎓"
 type: "tech"
 topics: ["postgresql", "postgres", "mysql", "database", "rdb"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 # 読者対象
