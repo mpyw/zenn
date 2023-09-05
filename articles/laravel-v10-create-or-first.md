@@ -4,7 +4,6 @@ emoji: "🧐"
 type: "tech"
 topics: ["php", "laravel", "eloquent", "database", "postgresql"]
 published: true
-publication_name: "yumemi_inc"
 ---
 
 # TL;DR

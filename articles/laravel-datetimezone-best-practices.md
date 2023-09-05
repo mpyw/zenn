@@ -4,7 +4,6 @@ emoji: "🕰️"
 type: "tech"
 topics: ["php", "laravel", "datetime", "database", "postgresql"]
 published: true
-publication_name: "yumemi_inc"
 ---
 
 # はじめに

@@ -4,7 +4,6 @@ emoji: "🌐"
 type: "tech"
 topics: ["php", "laravel", "console"]
 published: true
-publication_name: "yumemi_inc"
 ---
 
 ## これは何？

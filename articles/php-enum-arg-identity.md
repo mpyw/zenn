@@ -4,7 +4,6 @@ emoji: "🧐"
 type: "tech"
 topics: ["php", "enum", "null"]
 published: true
-publication_name: "yumemi_inc"
 ---
 
 # 問題
