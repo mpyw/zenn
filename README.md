@@ -15,21 +15,26 @@
 
 - **[🥳 5年間 Laravel を使って辿り着いた，全然頑張らない「なんちゃってクリーンアーキテクチャ」という落としどころ](https://zenn.dev/mpyw/articles/ce7d09eb6d8117)**
   &nbsp;[[✍Edit]️](./articles/ce7d09eb6d8117.md)
-- **[🧐 [Laravel] createOrFirst の登場から激変した firstOrCreate, updateOrCreate に迫る！](https://zenn.dev/mpyw/articles/laravel-v10-create-or-first)
-  &nbsp;[[✍Edit]️](./articles/laravel-v10-create-or-first.md)**
-- **[🕰️ 後悔しない日付時刻・タイムゾーン設計と Laravel での実践法](https://zenn.dev/mpyw/articles/laravel-datetimezone-best-practices)
-  &nbsp;[[✍Edit]️](./articles/laravel-datetimezone-best-practices.md)**
+- **[🧐 [Laravel] createOrFirst の登場から激変した firstOrCreate, updateOrCreate に迫る！](https://zenn.dev/mpyw/articles/laravel-v10-create-or-first)**
+  &nbsp;[[✍Edit]️](./articles/laravel-v10-create-or-first.md)
+- **[🕰️ 後悔しない日付時刻・タイムゾーン設計と Laravel での実践法](https://zenn.dev/mpyw/articles/laravel-datetimezone-best-practices)**
+  &nbsp;[[✍Edit]️](./articles/laravel-datetimezone-best-practices.md)
 - [⚡ [Laravel] Testbench の getPackageProviders() を larastan に自動的に読み取らせる方法](https://zenn.dev/mpyw/articles/c9398789cb6514)
   &nbsp;[[✍Edit]️](./articles/c9398789cb6514.md)
 
 ### Others
 
-- **[🧐 PHP 8.1 において名前付き引数で NULL と引数省略を区別する方法](https://zenn.dev/mpyw/articles/php-enum-arg-identity.md)
-  &nbsp;[[✍Edit]️](./articles/php-enum-arg-identity.md)**
+- **[🧐 PHP 8.1 において名前付き引数で NULL と引数省略を区別する方法](https://zenn.dev/mpyw/articles/php-enum-arg-identity.md)**
+  &nbsp;[[✍Edit]️](./articles/php-enum-arg-identity.md)
 - [🐘 [PHP] フレームワークの最新バージョンに対応したライブラリをフレームワークのリリース前から開発する方法](https://zenn.dev/mpyw/articles/a99f3087829993)
   &nbsp;[[✍Edit]️](./articles/a99f3087829993.md)
 - [📨 PHP でコンマ区切りのメールアドレスを分割する](https://zenn.dev/mpyw/articles/5c2c69108d302f)
   &nbsp;[[✍Edit]️](./articles/5c2c69108d302f.md)
+
+## Go
+
+- **[🥹 なぜ Go ではロガーをコンストラクタ DI してはならないのか](https://zenn.dev/mpyw/articles/go-dont-inject-logger)**
+  &nbsp;[[✍Edit]️](./articles/go-dont-inject-logger.md)
 
 ## TypeScript
 
