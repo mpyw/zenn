@@ -410,7 +410,7 @@ import (
 func main() {
     ctx := context.Background()
 
-    ctxWithEnglish := lang.WithContext(ctx, English)
+    ctxWithEnglish := lang.WithContext(ctx, lang.English)
     fmt.Println("Initial context value:", lang.FromContext(ctx))  // => "English" (フォールバック)
     fmt.Println("Context with English:", lang.FromContext(ctxWithEnglish))  // => "English"
 
