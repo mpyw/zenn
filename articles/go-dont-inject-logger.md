@@ -688,3 +688,81 @@ func FromContext(ctx context.Context) Logger {
 - **Go はコンテキストが非常に強力な情報伝達手段。とりあえず第1引数で受けることを常に頭に入れておこう！**
 - **使用範囲が広いものは，安直にコンストラクタインジェクションせずにコンテキストに入れることを考えろ！**
 - **他言語での知識が Go に通用しないことはよくあるので，躓いたらその都度謙虚に勉強しよう！**
+
+# 追記: Functional Option Pattern も考えてみる
+
+[@mattn](https://twitter.com/mattn_jp) さんからコメントを頂きました。
+
+https://twitter.com/mattn_jp/status/1699590779587752001
+
+途中でもただ *「オプション引数を表現したいだけなら Function Option Pattern で十分な可能性がある」* と軽く紹介しましたが，確かに
+
+- よく設計されたライブラリ開発である
+- コンストラクタ DI のように，構造体生成段階で使用するロガーを確定させておきたい
+
+このようなケースでは Function Option Pattern が適していると確かに感じます。
+
+:::details Function Option Pattern を使ったサービス生成
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+type Logger struct {
+	prefix string
+}
+
+func (l *Logger) Log(message string) {
+	fmt.Printf("%s: %s\n", l.prefix, message)
+}
+
+type ServiceOption func(*Service)
+
+type Service struct {
+	logger *Logger
+}
+
+func WithLogger(l *Logger) ServiceOption {
+	return func(s *Service) {
+		s.logger = l
+	}
+}
+
+func NewService(opts ...ServiceOption) *Service {
+	s := &Service{}
+	for _, opt := range opts {
+		opt(s)
+	}
+	// デフォルトのロガー設定
+	if s.logger == nil {
+		s.logger = &Logger{prefix: "default"}
+	}
+	return s
+}
+
+func (s *Service) DoSomething() {
+	s.logger.Log("Doing something...")
+}
+
+func main() {
+	customLogger := &Logger{prefix: "customLogger"}
+	serviceWithCustomLogger := NewService(WithLogger(customLogger))
+	serviceWithCustomLogger.DoSomething()
+
+	defaultService := NewService()
+	defaultService.DoSomething()
+}
+```
+:::
+
+とはいえ，
+
+- 要件が変わりやすいアプリケーション開発である
+- 律儀にリレーするよりは，飛び道具として雑に使えるようにしておきたい
+
+このような環境では依然としてコンテキスト方式に優位性があると思うので，適材適所で考えたいところです。はてブで以下のような別のコメントも頂いていますが，私も同じような考えです。
+
+> *コンテキスト方式の実装は便利なのでなんか書き換えたくなるデメリットがない限りはこれでいいと思ってる。もっとシビアな環境で動くものなら全然違う実装にするけど。*
