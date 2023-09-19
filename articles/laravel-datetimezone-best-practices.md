@@ -195,6 +195,38 @@ SELECT
 
 後者は同じタイムゾーンを指定しているので，キャストと全く同じ動作になります。
 
+### `text` → `timestamptz`<br>`text` → `timestamp`
+
+https://www.postgresql.org/docs/current/functions-formatting.html#FUNCTIONS-FORMATTING-DATETIME-TABLE
+
+文字列形式のデータから `to_timestamp()` という関数で，フォーマットを指定してあげれば変換できます。但し，特に気をつけるべき重大なトラップがあります。
+
+:::message alert
+`to_timestamp` を使用すると，フォーマットに依らず返り値は **`timestamptz`** になります。
+**フォーマット中にタイムゾーンが含まれていなかったとしても `timestamp` にはなりません。**
+:::
+
+「タイムゾーンの無い日付文字列を JST と見なしてパースして， `timestamptz` 化して取り込みたい」
+
+というケースでは，直感的に書いてしまいそうな 2 番目ではなく， 3 番目のほうが正解となります。くれぐれも間違えないようにお気をつけください。
+
+```sql
+SET SESSION TIMEZONE TO 'UTC';
+SELECT
+    -- 2023-09-01 00:00:00+00
+    to_timestamp('2023-09-01 00:00:00', 'YYYY/MM/DD HH24:MI:SS'),
+
+    -- 2023-09-01 00:00:00+00 AT TIME ZONE 'Asia/Tokyo'
+    -- → 2023-09-01 09:00:00
+    to_timestamp('2023-09-01 00:00:00', 'YYYY/MM/DD HH24:MI:SS') AT TIME ZONE 'Asia/Tokyo',
+
+    -- 2023-09-01 00:00:00+00::timestamp AT TIME ZONE 'Asia/Tokyo'
+    -- → 2023-09-01 00:00:00 AT TIME ZONE 'Asia/Tokyo'
+    -- → 2023-09-01 00:00:00+09
+    -- → 2023-08-31 15:00:00+00
+    to_timestamp('2023-09-01 00:00:00', 'YYYY/MM/DD HH24:MI:SS')::timestamp AT TIME ZONE 'Asia/Tokyo';
+```
+
 ### `timestamp` → `date`<br>`timestamptz` → `date`
 
 `timestamptz::date` は，設定されているタイムゾーンに合わせてから日付部分を取り出すことに注意してください。変換後はタイムゾーンの情報は失われてしまうので，取り扱いに気をつける必要があります。
