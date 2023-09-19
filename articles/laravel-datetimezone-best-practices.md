@@ -214,17 +214,17 @@ https://www.postgresql.org/docs/current/functions-formatting.html#FUNCTIONS-FORM
 SET SESSION TIMEZONE TO 'UTC';
 SELECT
     -- 2023-09-01 00:00:00+00
-    to_timestamp('2023-09-01 00:00:00', 'YYYY/MM/DD HH24:MI:SS'),
+    to_timestamp('2023-09-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'),
 
     -- 2023-09-01 00:00:00+00 AT TIME ZONE 'Asia/Tokyo'
     -- → 2023-09-01 09:00:00
-    to_timestamp('2023-09-01 00:00:00', 'YYYY/MM/DD HH24:MI:SS') AT TIME ZONE 'Asia/Tokyo',
+    to_timestamp('2023-09-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS') AT TIME ZONE 'Asia/Tokyo',
 
     -- 2023-09-01 00:00:00+00::timestamp AT TIME ZONE 'Asia/Tokyo'
     -- → 2023-09-01 00:00:00 AT TIME ZONE 'Asia/Tokyo'
     -- → 2023-09-01 00:00:00+09
     -- → 2023-08-31 15:00:00+00
-    to_timestamp('2023-09-01 00:00:00', 'YYYY/MM/DD HH24:MI:SS')::timestamp AT TIME ZONE 'Asia/Tokyo';
+    to_timestamp('2023-09-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')::timestamp AT TIME ZONE 'Asia/Tokyo';
 ```
 
 ### `timestamp` → `date`<br>`timestamptz` → `date`
