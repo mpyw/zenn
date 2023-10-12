@@ -9,10 +9,10 @@ published: true
 # TL;DR
 
 - `firstOrCreate()` `updateOrCreate()` という機能がもともと Eloquent に備わっていたが，これらはレースコンディションを考慮した実装になっていなかったため，大きなアクセス数が伴うプロダクションで安心して使うには少し工夫が必要な機能だった。
-- Laravel [v10.20.0](https://github.com/laravel/framework/releases/tag/v10.20.0) + [v10.21.0](https://github.com/laravel/framework/releases/tag/v10.21.0) + [v10.21.1](https://github.com/laravel/framework/releases/tag/v10.21.1) あたりでレースコンディションを考慮した `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
+- Laravel **[v10.29.0](https://github.com/laravel/framework/releases/tag/v10.29.0)** で `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
 
 :::message alert
-**`v10.20.0` `v10.21.0` は不完全な修正でバグを包含しているため，必ず `v10.21.1` 以降を使用してください。**
+正確には `v10.20.0` あたりから徐々に変更が適用されていきましたが，途中で不具合が見つかったため `v10.25.0` で一度リバートされています。**必ず `v10.29.0` 以降を使用してください。**
 :::
 
 # はじめに
@@ -111,7 +111,7 @@ $user = DB::retryOnDuplicateKey(
 );
 ```
 
-# Laravel 10.21.1 以降ではどうなるか？
+# Laravel 10.29.0 以降ではどうなるか？
 
 ## `createOrFirst` および `UniqueConstraintViolationException` の登場
 
@@ -395,7 +395,15 @@ https://github.com/laravel/framework/pull/48192
 
 https://github.com/laravel/framework/pull/48213
 
-上記の 4 つの PR によって，以下の変更が適用されました。
+https://github.com/laravel/framework/pull/48531
+
+https://github.com/laravel/framework/pull/48533
+
+https://github.com/laravel/framework/pull/48541
+
+https://github.com/laravel/framework/pull/48637
+
+上記の 8 つの PR によって，以下の変更が適用されました。
 
 - `firstOrCreate` は内部で `createOrFirst` を利用
 - `updateOrCreate` は内部で `firstOrCreate` を利用
@@ -542,8 +550,5 @@ class UniqueConstraint
 # まとめ
 
 > - `firstOrCreate()` `updateOrCreate()` という機能がもともと Eloquent に備わっていたが，これらはレースコンディションを考慮した実装になっていなかったため，大きなアクセス数が伴うプロダクションで安心して使うには少し工夫が必要な機能だった。
-> - Laravel [v10.20.0](https://github.com/laravel/framework/releases/tag/v10.20.0) + [v10.21.0](https://github.com/laravel/framework/releases/tag/v10.21.0) + [v10.21.1](https://github.com/laravel/framework/releases/tag/v10.21.1) あたりでレースコンディションを考慮した `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
->
-> :::message alert
-> **`v10.20.0` `v10.21.0` は不完全な修正でバグを包含しているため，必ず `v10.21.1` 以降を使用してください。**
+> - Laravel **[v10.29.0](https://github.com/laravel/framework/releases/tag/v10.29.0)** で `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
 > :::
