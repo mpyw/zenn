@@ -551,4 +551,3 @@ class UniqueConstraint
 
 > - `firstOrCreate()` `updateOrCreate()` という機能がもともと Eloquent に備わっていたが，これらはレースコンディションを考慮した実装になっていなかったため，大きなアクセス数が伴うプロダクションで安心して使うには少し工夫が必要な機能だった。
 > - Laravel **[v10.29.0](https://github.com/laravel/framework/releases/tag/v10.29.0)** で `createOrFirst()` という機能が実装され，さらに `firstOrCreate()` `updateOrCreate()` が内部的にそれを利用するように変更された。
-> :::
