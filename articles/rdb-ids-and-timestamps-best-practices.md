@@ -164,7 +164,64 @@ CREATE TABLE users(
 );
 ```
 
-ユーザ定義関数に関しては， [こちらの Gist](https://gist.github.com/kjmph/5bd772b2c2df145aa645b837da7eca74) の実装を利用したところ，動作することを確認した。コメント欄を見る限り，ベンチマーク的にも大きな問題は無さそうとのこと。こちらに関しては可読性が少し悪いため，常にプログラム側で生成する前提で，デフォルト値は無しにしても良い。
+ユーザ定義関数に関しては， [こちらの Gist](https://gist.github.com/kjmph/5bd772b2c2df145aa645b837da7eca74) の実装を利用したところ，動作することを確認した。コメント欄を見る限り，ベンチマーク的にも大きな問題は無さそうとのこと。
+
+:::message
+デフォルトの状態では，入れようと思えば `id` カラムにどのバージョンの UUID を入れることも出来てしまう。以下のように `CHECK` 制約をつけることで，時系列を保証する UUID v7 だけに挿入を限定することができる。
+
+```sql
+CREATE TABLE users(
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7() CHECK (get_byte(uuid_send(id), 6) >> 4 = 7)
+);
+```
+
+:::details 参考: Laravel のマイグレーション向けのレシピ
+
+[umbrellio/laravel-pg-extensions: Laravel extensions for Postgres](https://github.com/umbrellio/laravel-pg-extensions) が提供する拡張 [`Blueprint`](https://github.com/umbrellio/laravel-pg-extensions/blob/master/src/Schema/Blueprint.php) クラスを更にマクロ拡張する例
+
+```php
+class UuidConstraints
+{
+    public function __construct(
+        private readonly Blueprint $table,
+    ) {
+    }
+
+    public function forceVersion(int $version, string $column = 'id', ?string $index = null): void
+    {
+        $this->table->check([$column], $index)->whereRaw("get_byte(uuid_send({$column}), 6) >> 4 = {$version}");
+    }
+
+    public function drop(array|string $columnsOrIndex = ['id']): void
+    {
+        $this->table->dropCheck($columnsOrIndex);
+    }
+
+    public function forceV7(string $column = 'id', ?string $index = null): void
+    {
+        $this->forceVersion(7, $column, $index);
+    }
+
+    public function forceV4(string $column = 'id', ?string $index = null): void
+    {
+        $this->forceVersion(4, $column, $index);
+    }
+}
+```
+
+```php
+Blueprint::macro('uuidConstraints', function (): UuidConstraints {
+    assert($this instanceof ExtendedBluePrint); // @phpstan-ignore-line
+
+    return new UuidConstraints($this);
+});
+```
+
+```php
+$table->uuid('id')->primary();
+$table->uuidConstraints()->forceV7();
+```
+:::
 
 #### UUID v1
 
