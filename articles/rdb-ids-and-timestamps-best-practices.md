@@ -213,10 +213,10 @@ class UuidConstraints
 
 ```php
 use Illuminate\Database\Schema\Blueprint;
-use Umbrellio\Postgres\Schema\Blueprint as ExtendedBluePrint;
+use Umbrellio\Postgres\Schema\Blueprint as ExtendedBlueprint;
 
 Blueprint::macro('uuidConstraints', function (): UuidConstraints {
-    assert($this instanceof ExtendedBluePrint); // @phpstan-ignore-line
+    assert($this instanceof ExtendedBlueprint); // @phpstan-ignore-line
 
     return new UuidConstraints($this);
 });
