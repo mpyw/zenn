@@ -406,11 +406,11 @@ abstract class FormRequestTestCase extends TestCase
      * 成功時のアサーション
      *
      * @phpstan-param T|ValidationException $value
-     * @phpstan-assert FormRequest $value
+     * @phpstan-assert T $value
      */
     protected function assertOk(mixed $value): void
     {
-        $this->assertInstanceOf(FormRequest::class, $value);
+        $this->assertInstanceOf($this->class(), $value);
     }
 
     /**
