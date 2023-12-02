@@ -2,7 +2,7 @@
 title: "Postgres と MySQL における id, created_at, updated_at に関するベストプラクティス"
 emoji: "🎓"
 type: "tech"
-topics: ["postgresql", "postgres", "mysql", "database", "rdb"]
+topics: ["postgresql", "postgres", "mysql", "database", "laravel"]
 published: true
 ---
 
@@ -226,6 +226,53 @@ Blueprint::macro('uuidConstraints', function (): UuidConstraints {
 $table->uuid('id')->primary();
 $table->uuidConstraints()->forceV7();
 ```
+:::
+
+:::message
+せっかく時系列を保証する UUID v7 を採用しても，デフォルトの状態では集約演算機能が提供されていない。代表的な例としては `MAX()` `MIN()` が使えないことが挙げられる。しかし以下のようなマイグレーションを行うと，整数型などと遜色ない集約演算が行えるようになる。
+
+```sql
+-- UP マイグレーション
+CREATE OR REPLACE FUNCTION min(uuid, uuid) RETURNS uuid AS
+$$
+BEGIN
+    return LEAST($1, $2);
+END
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION max(uuid, uuid) RETURNS uuid AS
+$$
+BEGIN
+    return GREATEST($1, $2);
+END
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE AGGREGATE min(uuid) (
+    sfunc = min,
+    stype = uuid,
+    combinefunc = min,
+    parallel = safe,
+    sortop = operator (<)
+);
+
+CREATE OR REPLACE AGGREGATE max(uuid) (
+    sfunc = max,
+    stype = uuid,
+    combinefunc = max,
+    parallel = safe,
+    sortop = operator (>)
+);
+```
+
+```sql
+-- DOWN マイグレーション
+DROP AGGREGATE IF EXISTS max(uuid);
+DROP AGGREGATE IF EXISTS min(uuid);
+DROP FUNCTION IF EXISTS max(uuid, uuid);
+DROP FUNCTION IF EXISTS min(uuid, uuid);
+```
+
+[Laravel の Has One Of Many 機能に関する公式ドキュメント](https://laravel.com/docs/eloquent-relationships#has-one-of-many) では出来ないとはっきり書かれているが，上記の整備を行えばごく普通に使えてしまう。
 :::
 
 #### UUID v1
