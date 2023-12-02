@@ -279,7 +279,7 @@ INSERT INTO users(id, name) VALUES ('U1', 'Bob'), ('U2', 'Alice');
 INSERT INTO mutex(key) VALUES ('user:U1:order'), ('user:U2:order');
 ```
 
-このように準備しておいた上で，以下のように `SELECT ... FOR UPDATE` を利用する。取得失敗時に即座に終了したい場合は， `NOWAIT` を付けたほうがよい。
+このように準備しておいた上で，以下のように `SELECT ... FOR UPDATE` を利用する。この際ロックタイムアウトを適切に設定するか，あるいは即時失敗で十分な場合は以下のように `NOWAIT` を設定するとよい。
 
 ```sql
 BEGIN;
@@ -343,6 +343,44 @@ COMMIT;
 **総評: 最も堅実な手段ではあるが，ロック用のレコードを予め据えておくのがとにかく億劫。**
 
 # 応用集
+
+## Postgres でロックタイムアウトを利用する
+
+Postgres は MySQL のようにアドバイザリーロック関数上で直接ロックタイムアウトを設定する手段を提供していないが，以下のようなラッパー関数を作ることで対応可能となる。 [`lock_timeout`](https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-LOCK-TIMEOUT) という汎用的な設定値があるが，これは **アドバイザリーロックのタイムアウト制御にも作用する。**
+
+```sql
+CREATE OR REPLACE FUNCTION pg_try_advisory_lock_with_timeout(key bigint, lock_timeout_value text) RETURNS boolean
+SET lock_timeout FROM CURRENT
+AS $$
+BEGIN
+  EXECUTE format('SET lock_timeout TO %L;', lock_timeout_value);
+  PERFORM pg_advisory_lock(key);
+  RETURN true;
+EXCEPTION
+  WHEN lock_not_available OR deadlock_detected THEN RETURN false;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+```sql
+CREATE OR REPLACE FUNCTION pg_try_advisory_xact_lock_with_timeout(key bigint, lock_timeout_value text) RETURNS boolean
+SET lock_timeout FROM CURRENT
+AS $$
+BEGIN
+  EXECUTE format('SET LOCAL lock_timeout TO %L;', lock_timeout_value);
+  PERFORM pg_advisory_xact_lock(key);
+  RETURN true;
+EXCEPTION
+  WHEN lock_not_available OR deadlock_detected THEN RETURN false;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+なおプログラム上から一時的な関数として作成したい場合は， [このように](https://github.com/mpyw/laravel-database-advisory-lock/blob/03a366129006475f6dfe23cce34c365c2233f3df/src/Utilities/PostgresTimeoutEmulator.php#L39-L68) `pg_temp` スキーマ上に作るとよい。
+
+:::message alert
+MySQL の場合は `lock_wait_timeout` は行ロックにしか作用せず，アドバイザリーロックでは `GET_LOCK()` の第 2 引数を利用しなければならない。
+:::
 
 ## アドバイザリーロック関数 + テーブルでのロック情報保持
 
