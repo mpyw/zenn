@@ -180,6 +180,8 @@ CREATE TABLE users(
 [umbrellio/laravel-pg-extensions: Laravel extensions for Postgres](https://github.com/umbrellio/laravel-pg-extensions) が提供する拡張 [`Blueprint`](https://github.com/umbrellio/laravel-pg-extensions/blob/master/src/Schema/Blueprint.php) クラスを更にマクロ拡張する例
 
 ```php
+use Umbrellio\Postgres\Schema\Blueprint;
+
 class UuidConstraints
 {
     public function __construct(
@@ -210,6 +212,9 @@ class UuidConstraints
 ```
 
 ```php
+use Illuminate\Database\Schema\Blueprint;
+use Umbrellio\Postgres\Schema\Blueprint as ExtendedBluePrint;
+
 Blueprint::macro('uuidConstraints', function (): UuidConstraints {
     assert($this instanceof ExtendedBluePrint); // @phpstan-ignore-line
 
