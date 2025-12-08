@@ -9,6 +9,13 @@
 - **[🔒 排他制御のためだけに Redis 渋々使ってませんか？データベース単独でアドバイザリーロックできるよ！](https://zenn.dev/mpyw/articles/rdb-advisory-locks)
   &nbsp;[[✍Edit]️](./articles/rdb-advisory-locks.md)**
 
+## Go
+
+- **[☠️ New Relic Go Agent 完全理解・実践導入ガイド](https://zenn.dev/mpyw/articles/new-relic-go-agent-struggle)**
+  &nbsp;[[✍Edit]️](./articles/new-relic-go-agent-struggle.md)
+- **[🥹 なぜ Go ではロガーをコンストラクタ DI してはならないのか](https://zenn.dev/mpyw/articles/go-dont-inject-logger)**
+  &nbsp;[[✍Edit]️](./articles/go-dont-inject-logger.md)
+
 ## PHP 
 
 ### Laravel
@@ -32,11 +39,6 @@
   &nbsp;[[✍Edit]️](./articles/a99f3087829993.md)
 - [📨 PHP でコンマ区切りのメールアドレスを分割する](https://zenn.dev/mpyw/articles/5c2c69108d302f)
   &nbsp;[[✍Edit]️](./articles/5c2c69108d302f.md)
-
-## Go
-
-- **[🥹 なぜ Go ではロガーをコンストラクタ DI してはならないのか](https://zenn.dev/mpyw/articles/go-dont-inject-logger)**
-  &nbsp;[[✍Edit]️](./articles/go-dont-inject-logger.md)
 
 ## TypeScript
 

@@ -3,7 +3,7 @@ title: "New Relic Go Agent 完全理解・実践導入ガイド"
 emoji: "☠️"
 type: "tech"
 topics: ["go", "newrelic", "telemetry", "apm", "logging"]
-published: false
+published: true
 ---
 
 :::message
