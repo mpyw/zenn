@@ -235,7 +235,7 @@ func BootstrapNewRelic() error {
 ```
 
 :::message
-これ以降ではグローバル変数 `App` が `*newrelic.Application` を指しているものとします。
+これ以降ではグローバル変数 `App` が [`*newrelic.Application`](https://pkg.go.dev/github.com/newrelic/go-agent/v3/newrelic#Application) を指しているものとします。
 :::
 
 ## [`newrelic.Transaction`](https://pkg.go.dev/github.com/newrelic/go-agent/v3/newrelic#Transaction)
@@ -243,7 +243,7 @@ func BootstrapNewRelic() error {
 **1 つのトランザクション（処理の単位）を表す構造体** です。HTTP リクエストの処理やバッチ処理の実行など，計測したい処理の開始から終了までを追跡します。これがコンテキストに埋め込まれ，引き回されることを想定した設計です。
 
 :::message alert
-トランザクションは Goroutine 間で共有してはなりません。もし新しい Goroutine を起動する場合は， `NewGoroutine()` メソッドで派生トランザクションを作る必要があります。
+トランザクションは Goroutine 間で共有してはなりません。もし新しい Goroutine を起動する場合は， [`(*newrelic.Transaction).NewGoroutine()`](https://pkg.go.dev/github.com/newrelic/go-agent#Transaction.NewGoroutine) メソッドで派生トランザクションを作る必要があります。
 （詳しくは後述します）
 :::
 
