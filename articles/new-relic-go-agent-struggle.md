@@ -1356,7 +1356,7 @@ defer span.End()
 |---------------------------|-----------------------------|
 | `A := StartTransaction()` |
 |                           | `B := A.NewGoroutine()`     |
-| `A.End()` 🆗️             |                             |
+| `A.End()`                 |                             |
 |                           |                             |
 |                           | `x := B.StartSegment()` 🆗❓ |
 |                           | `x.End()` 💥                |
