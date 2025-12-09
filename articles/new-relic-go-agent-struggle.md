@@ -1214,18 +1214,18 @@ newrelic.Application
     └── c. newrelic.Segment (Goroutine A: 3回目)
 ```
 
-| Goroutine A               |
-|---------------------------|
+|               Goroutine A |
+|--------------------------:|
 | `A := StartTransaction()` |
-|                           |
-| `a := A.StartSegment()`   |
-| `b := A.StartSegment()`   |
-| `c := A.StartSegment()`   |
-| `c.End()` 🆗              |
-| `b.End()` 🆗              |
-| `a.End()` 🆗              |
-|                           |
-| `A.End()` 🆗              |
+|                         ⋮ |
+|   `a := A.StartSegment()` |
+|   `b := A.StartSegment()` |
+|   `c := A.StartSegment()` |
+|              `c.End()` 🆗 |
+|              `b.End()` 🆗 |
+|              `a.End()` 🆗 |
+|                         ⋮ |
+|              `A.End()` 🆗 |
 
 セグメントは上記のように **LIFO（後入れ先出し）** の順序で終了されることによって，入れ子関係が正しく計測されます。 **セグメントはトランザクションの子要素として横並びになるだけで，セグメント同士が親子関係になるわけではない** ため，このような制約があるのです。
 
@@ -1241,18 +1241,18 @@ newrelic.Application
     └── e. newrelic.Segment (Goroutine B: 2回目)
 ```
 
-| Goroutine A               | Goroutine B             |
-|---------------------------|-------------------------|
+|               Goroutine A | Goroutine B             |
+|--------------------------:|:------------------------|
 | `A := StartTransaction()` |                         |
-|                           |                         |
-| `a := A.StartSegment()`   |                         |
-| `b := A.StartSegment()`   |                         |
-|                           | `c := A.StartSegment()` |
-| `d := A.StartSegment()`   |                         |
-|                           | `e := A.StartSegment()` |
+|                         ⋮ |                         |
+|   `a := A.StartSegment()` |                         |
+|   `b := A.StartSegment()` |                         |
+|                         ↳ | `c := A.StartSegment()` |
+|   `d := A.StartSegment()` | ↲                       |
+|                         ↳ | `e := A.StartSegment()` |
 |                           | `e.End()` 🆗            |
-| `d.End()` 🆗              |                         |
-| `b.End()` 💥              |                         |
+|              `d.End()` 🆗 | ↲                       |
+|              `b.End()` 💥 |                         |
 
 Goroutine 間は並行処理されるため， LIFO の順序でセグメントが終了するとは限りません。これがトランザクションが Goroutine セーフではない直接的な理由です。 [`sync.Mutex`](https://pkg.go.dev/sync#Mutex) を使っているかどうかという話ではなく，**セグメントの開始・終了の順序が Goroutine 間で入り乱れてしまうため，正しい順序で終了できなくなる** のです。
 
@@ -1306,24 +1306,24 @@ newrelic.Application
     └── d. newrelic.Segment (Goroutine A: 3回目)
 ```
 
-| Goroutine A               | Goroutine B             |
-|---------------------------|-------------------------|
-| `A := StartTransaction()` |
-|                           | `B := A.NewGoroutine()` |
-|                           |                         |
-| `a := A.StartSegment()`   |                         |
-| `b := A.StartSegment()`   |                         |
-|                           | `c := B.StartSegment()` |
-| `d := A.StartSegment()`   |                         |
-|                           | `e := B.StartSegment()` |
-|                           | `e.End()` 🆗            |
-| `d.End()` 🆗              |                         |
-| `b.End()` 🆗✨️            |                         |
-|                           | `c.End()` 🆗            |
-| `a.End()` 🆗              |                         |
-|                           |                         |
-|                           | `B.End()` 🆗            |
-| `A.End()` 🆗              |                         |
+|               Goroutine A | Goroutine B             |
+|--------------------------:|:------------------------|
+| `A := StartTransaction()` | ↴                       |
+|                         ⋮ | `B := A.NewGoroutine()` |
+|                         ⋮ | ⋮                       |
+|   `a := A.StartSegment()` | ⋮                       |
+|   `b := A.StartSegment()` | ⋮                       |
+|                         ⋮ | `c := B.StartSegment()` |
+|   `d := A.StartSegment()` | ⋮                       |
+|                         ⋮ | `e := B.StartSegment()` |
+|                         ⋮ | `e.End()` 🆗            |
+|              `d.End()` 🆗 | ⋮                       |
+|            `b.End()` 🆗✨️ | ⋮                       |
+|                         ⋮ | `c.End()` 🆗            |
+|              `a.End()` 🆗 | ⋮                       |
+|                         ⋮ | ⋮                       |
+|                         ⋮ | `B.End()` 🆗            |
+|              `A.End()` 🆗 |                         |
 
 :::details コラム: New Relic 以外はどうなのよ？
 Datadog および OpenTelemetry は Goroutine セーフです。スパン開始時に `ctx` 変数を置き換えるお作法になっているため，実質的に New Relic でいうところの [`(*newrelic.Transaction).NewGoroutine()`](https://pkg.go.dev/github.com/newrelic/go-agent#Transaction.NewGoroutine) を呼び出しているのと同じ効果が得られています。
@@ -1356,12 +1356,12 @@ defer span.End()
 :::message alert
 **[`(*newrelic.Transaction).NewGoroutine()`](https://pkg.go.dev/github.com/newrelic/go-agent#Transaction.NewGoroutine) で派生したトランザクションは，親トランザクションが終了した時点で無効** になってしまいます。
 
-| Goroutine A               | Goroutine B                 |
-|---------------------------|-----------------------------|
-| `A := StartTransaction()` |
-|                           | `B := A.NewGoroutine()`     |
-| `A.End()`                 |                             |
-|                           |                             |
+|               Goroutine A | Goroutine B                 |
+|--------------------------:|:----------------------------|
+| `A := StartTransaction()` | ↴                           |
+|                         ⋮ | `B := A.NewGoroutine()`     |
+|                 `A.End()` | ↲                           |
+|                           | &nbsp;                      |
 |                           | `x := B.StartSegment()` 🆗❓ |
 |                           | `x.End()` 💥                |
 
@@ -1390,25 +1390,25 @@ newrelic.Application
      └── e. newrelic.Segment (Goroutine B: 2回目)
 ```
 
-| Goroutine A               | Goroutine B                  |
-|---------------------------|------------------------------|
+|               Goroutine A | Goroutine B                  |
+|--------------------------:|:-----------------------------|
 | `A := StartTransaction()` |
-|                           |                              |
-| `a := A.StartSegment()`   |                              |
-| `b := A.StartSegment()`   |                              |
-| `c := A.StartSegment()`   |                              |
-| `c.End()` 🆗              |                              |
-| `b.End()` 🆗️             |                              |
-|                           | `B := StartTransaction()`    |
-| `a.End()` 🆗              |                              |
-|                           |                              |
-|                           | `d := B.StartSegment()`      |
-| `A.End()` ️               |                              |
-|                           |                              |
+|                         ⋮ |                              |
+|   `a := A.StartSegment()` |                              |
+|   `b := A.StartSegment()` |                              |
+|   `c := A.StartSegment()` |                              |
+|              `c.End()` 🆗 |                              |
+|             `b.End()` 🆗️ |                              |
+|                         ⋮ | `B := StartTransaction()`    |
+|              `a.End()` 🆗 | ⋮                            |
+|                         ⋮ | ⋮                            |
+|                         ⋮ | `d := B.StartSegment()`      |
+|               `A.End()` ️ | ⋮                            |
+|                           | ⋮                            |
 |                           | `e := B.StartSegment()` 🆗✨️ |
 |                           | `e.End()` 🆗✨️               |
 |                           | `d.End()` 🆗✨️               |
-|                           |                              |
+|                           | ⋮                            |
 |                           | `B.End()` 🆗                 |
 
 元の設計の問題点は派生トランザクションを作ってしまっていたことでした。つまり派生ではなく， **全く別のトランザクションとして作れば問題は解決するのです**。
