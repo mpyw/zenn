@@ -1331,7 +1331,6 @@ Datadog および OpenTelemetry は Goroutine セーフです。スパン開始�
 **Datadog の場合:**
 
 ```go
-// スパンを開始すると新しいコンテキストが返される
 span, ctx := tracer.StartSpanFromContext(ctx, "operation.name")
 defer span.Finish()
 ```
@@ -1345,8 +1344,9 @@ defer span.End()
 
 どちらも **スパン開始時に必ず新しいコンテキストが返される** 設計になっているため，開発者が意識せずとも自然と Goroutine セーフになります。一方 New Relic は既存のトランザクションをコンテキストから取り出して使い回す設計なので， [`(*newrelic.Transaction).NewGoroutine()`](https://pkg.go.dev/github.com/newrelic/go-agent#Transaction.NewGoroutine) の呼び出しを明示的に行う必要があります。
 
-> 💬オーバーヘッドとか微々たるものだろうし，絶対こっちのほうがいいのでは…
-> 💬まぁ `defer` ステートメントが New Relic だけ 1 行で書けるのだけは救いかな…？
+> 💬オーバーヘッドとか微々たるものだろうし，こっちのほうがいいのでは…？
+> 💬でも全関数計装でコンテキスト毎回ラップしてたら流石にやばいか…？
+> 💬`defer` ステートメントが New Relic だけ 1 行で書けるのは救いかな…？
 :::
 
 ## Goroutine 対応不備 ②: Goroutine による遅延処理でセグメント計測エラー
