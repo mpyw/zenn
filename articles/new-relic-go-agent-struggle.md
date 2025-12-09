@@ -192,12 +192,11 @@ https://pkg.go.dev/github.com/open-telemetry/opentelemetry-go-instrumentation
 ↓ 上記のアーキテクチャ解説
 https://opentelemetry.io/docs/zero-code/obi/
 
-対応範囲が一般的なものに限定されていれば， OSS コミュニティの先人の知恵を借りるだけで目的は達成できそうです。
-
 ↓ 最近注目されている Grafana Beyla
+（OSS だがマネージドサービスは有料）
 https://grafana.com/ja/oss/beyla-ebpf/
 
-こちらはプロプライエタリな製品ですが，近年注目を集めているようです。
+対応範囲が一般的なものに限定されていれば， OSS コミュニティの先人の知恵を借りるだけで目的は達成できそうです。
 
 ### 全関数計装: ☠️技術的には可能だが無理ゲー
 
