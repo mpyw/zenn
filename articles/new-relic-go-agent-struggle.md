@@ -1243,16 +1243,16 @@ newrelic.Application
 
 |               Goroutine A | Goroutine B             |
 |--------------------------:|:------------------------|
-| `A := StartTransaction()` |                         |
-|                         ⋮ |                         |
-|   `a := A.StartSegment()` |                         |
-|   `b := A.StartSegment()` |                         |
-|                         ↳ | `c := A.StartSegment()` |
-|   `d := A.StartSegment()` | ↲                       |
-|                         ↳ | `e := A.StartSegment()` |
-|                           | `e.End()` 🆗            |
-|              `d.End()` 🆗 | ↲                       |
-|              `b.End()` 💥 |                         |
+| `A := StartTransaction()` | ↴                       |
+|                         ⋮ | ⋮                       |
+|   `a := A.StartSegment()` | ⋮                       |
+|   `b := A.StartSegment()` | ⋮                       |
+|                         ⋮ | `c := A.StartSegment()` |
+|   `d := A.StartSegment()` | ⋮                       |
+|                         ⋮ | `e := A.StartSegment()` |
+|                         ⋮ | `e.End()` 🆗            |
+|              `d.End()` 🆗 | ⋮                       |
+|              `b.End()` 💥 | ⋮                       |
 
 Goroutine 間は並行処理されるため， LIFO の順序でセグメントが終了するとは限りません。これがトランザクションが Goroutine セーフではない直接的な理由です。 [`sync.Mutex`](https://pkg.go.dev/sync#Mutex) を使っているかどうかという話ではなく，**セグメントの開始・終了の順序が Goroutine 間で入り乱れてしまうため，正しい順序で終了できなくなる** のです。
 
