@@ -10,6 +10,14 @@ published: false
 Go ではタブインデントが推奨されていますが，この記事では Web ブラウザ上での見やすさに配慮して半角スペースを採用しています。
 :::
 
+:::message
+この記事は Forkwell の~~普段は絶対読まない~~メルマガで配信されていた
+
+**[おい、テックブログを書け - Speaker Deck](https://speakerdeck.com/nwiizo/oi-tetukuburoguwoshu-ke)**
+
+が目に留まり，どうしても頭から離れなくなってしまったので，発散してスッキリするために~~仕方なく~~書きました。いつから俺の筆はこんなに重くなってしまったんだ…
+:::
+
 # ご挨拶
 
 この記事は [Go - Qiita Advent Calendar 2025](https://qiita.com/advent-calendar/2025/go) (Series 2) の 14 日目の記事です。
