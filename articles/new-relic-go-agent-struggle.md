@@ -1356,7 +1356,7 @@ defer span.End()
 > 💬でも全関数計装でコンテキスト毎回ラップしてたら流石にやばいか…？
 > 💬`defer` ステートメントが New Relic だけ 1 行で書けるのは救いかな…？
 ↓
-> 💬**[Context-induced performance bottleneck in Go - Gab's Notes](https://gabnotes.org/posts/context-induced-performance-bottleneck-in-go) とか読むと，やっぱり全関数計装前提なら New Relic が正しい気がしてくる…！**
+> 💬 **[Context-induced performance bottleneck in Go - Gab's Notes](https://gabnotes.org/posts/context-induced-performance-bottleneck-in-go) とか読むと，やっぱり全関数計装前提なら New Relic が正しい気がしてくる…！**
 :::
 
 ## Goroutine 対応不備 ②: Goroutine による遅延処理でセグメント計測エラー
