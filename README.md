@@ -11,6 +11,8 @@
 
 ## Go
 
+- **[🚩 Feature Flag の量産に耐えられる Go のライブラリを作りました](https://zenn.dev/mpyw/articles/go-context-feature-flags)**
+  &nbsp;[[✍Edit]️](./articles/go-context-feature-flags.md)
 - **[☠️ New Relic Go Agent 完全理解・実践導入ガイド](https://zenn.dev/mpyw/articles/new-relic-go-agent-struggle)**
   &nbsp;[[✍Edit]️](./articles/new-relic-go-agent-struggle.md)
 - **[🥹 なぜ Go ではロガーをコンストラクタ DI してはならないのか](https://zenn.dev/mpyw/articles/go-dont-inject-logger)**
