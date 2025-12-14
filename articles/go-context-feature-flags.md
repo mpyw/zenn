@@ -199,13 +199,13 @@ Joe Tsai 氏（[`@dsnet`](https://github.com/dsnet)）は Go 開発チームの�
 
 [`@dsnet` 案](https://github.com/golang/go/issues/49189#issue-1037731122) には大きな欠点はなく，素晴らしいです。今後ビルトイン実装に入ってくるんだったらもうこれ一択でしょう。
 
-## 私の実装
+# 私の実装
 
 https://pkg.go.dev/github.com/mpyw/feature
 
 私の実装はかなりそれに近いですが，機能的な差異としては以下のような観点があります：
 
-### 名前なしキーにも対応
+## 名前なしキーにも対応
 
 怠惰な人向けに，文字列で名前をつけなくていい [`New()`](https://pkg.go.dev/github.com/mpyw/feature#example-New) [`NewBool()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewBool) も用意しています。 `var` 宣言の変数シンボルだけで済む！~~（別にこれ嬉しくなくね？）~~
 
@@ -230,7 +230,7 @@ fmt.Println(AnonFeature)
 
 実装にあたり， [`New()`](https://pkg.go.dev/github.com/mpyw/feature#example-New) [`NewBool()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewBool) [`NewNamed()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewNamed) [`NewNamedBool()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewNamedBool) とヘルパー含み 4 種類関数がある中で，何番目のトレースを取るかの調整が面倒だと感じました。これを簡単に解決するために，[ライブラリ内専用の unexported な調整関数](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L176-L180) を導入し， [生成用関数に含める](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L264) ことで，マジックナンバーを極力入れなくていいようにしています。
 
-### 中間状態を構造体に
+## 中間状態を構造体に
 
 直接最終的な値を取得するのが基本的ですが， `.Inspect()` を使うと中間状態を取得でき，その [`feature.Inspection`](https://pkg.go.dev/github.com/mpyw/feature#Inspection) 型はそのままわかり易くログに表示可能です。この機能は Laravel の Authorization Gate の [Response](https://laravel.com/docs/12.x/authorization#gate-responses) から着想を得ています。
 
@@ -243,7 +243,7 @@ fmt.Println(inspection.MustGet()) // Output: 100 or panic
 fmt.Println(inspection.IsSet())   // Output: true or false
 ```
 
-### ブール値の専用ラップ
+## ブール値の専用ラップ
 
 ブール値は使用頻度が高いので， [`Key`](https://pkg.go.dev/github.com/mpyw/feature#Key) を embed したブール型専用の [`BoolKey`](https://pkg.go.dev/github.com/mpyw/feature#BoolKey) を用意しています。直感的な `.Enabled()` / `.Disabled()` メソッドで呼べるようにしました。
 
@@ -262,7 +262,7 @@ if EnableSomething.ExplicitlyDisabled(ctx) {
 }
 ```
 
-### 「unexported なフィールドを持つ構造体」ではなく「Sealed Interface」を採用
+## 「unexported なフィールドを持つ構造体」ではなく「Sealed Interface」を採用
 
 [`@dsnet` 案](https://github.com/golang/go/issues/49189#issue-1037731122) では `Key` は構造体として定義し， `name` を unexported フィールドにすることで堅牢性を確保しています。
 
@@ -361,9 +361,9 @@ type BoolKey interface {
 
 とした場合は **[`BoolKey`](https://pkg.go.dev/github.com/mpyw/feature#BoolKey) は [`Key[bool]`](https://pkg.go.dev/github.com/mpyw/feature#Key) としても扱える** ため，相互運用性が高くなります。細かいですが，微かな長所として挙げてもいいと思います。
 
-## 設計過程で発生した注意点
+# 設計過程で発生した注意点
 
-### 空構造体の罠
+## 空構造体の罠
 
 上述した [`opaque`](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L392-L396) を最初は空構造体にしていました。自信満々で書き上げた衝突回避確認のテストが無惨にも大失敗していて，何事かと思ったら…既にコメントでちらっと説明したように， [`opaque`](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L392-L396) 構造体へのポインタが全部同じアドレスになってしまいました。
 
@@ -378,7 +378,7 @@ fmt.Printf("%p %p\n", a, b)  // 同じアドレスが出力される!
 
 Go ではゼロサイズの構造体へのポインタは，コンパイラの最適化によって一箇所に集められちゃうんですね。 **これは構造体フィールドに `_ byte` を追加することで回避できます。** Claude Code に教えてもらったテクニックです，素晴らしい。~~ダーティハックにも程があるだろ~~
 
-## 設計の変遷: noCopy ハックをやめた話
+### noCopy ハックをやめた話
 
 [`opaque`](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L392-L396) 導入よりもさらに前，最初は `key` 構造体自身をポインタとして引き回して，それをコンテキストキーにしていました。コピーされると困るので，以下で紹介されている **noCopy ハック** を入れていました。
 
