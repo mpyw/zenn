@@ -228,7 +228,7 @@ fmt.Println(AnonFeature)
 
 技術的には [`runtime.Caller`](https://pkg.go.dev/runtime#Caller) を使って定義位置を取得しています。これで「このフラグどこで定義されてるんだ？」がすぐわかります。
 
-実装にあたり， [`New()`](https://pkg.go.dev/github.com/mpyw/feature#example-New) [`NewBool()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewBool) [`NewNamed()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewNamed) [`NewNamedBool()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewNamedBool) とヘルパー含み 4 種類関数がある中で，何番目のトレースを取るかの調整が面倒だと感じました。これを簡単に解決するために，[ライブラリ内専用の unexported な調整関数](https://github.com/mpyw/feature/blob/375ee78e6e80728c97be46428cbd5913adca5cb2/feature.go#L174-L180) を導入し， [生成用関数に含める](https://github.com/mpyw/feature/blob/375ee78e6e80728c97be46428cbd5913adca5cb2/feature.go#L248) ことで，マジックナンバーを極力入れなくていいようにしています。
+実装にあたり， [`New()`](https://pkg.go.dev/github.com/mpyw/feature#example-New) [`NewBool()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewBool) [`NewNamed()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewNamed) [`NewNamedBool()`](https://pkg.go.dev/github.com/mpyw/feature#example-NewNamedBool) とヘルパー含み 4 種類関数がある中で，何番目のトレースを取るかの調整が面倒だと感じました。これを簡単に解決するために，[ライブラリ内専用の unexported な調整関数](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L176-L180) を導入し， [生成用関数に含める](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L264) ことで，マジックナンバーを極力入れなくていいようにしています。
 
 ### 中間状態を構造体に
 
@@ -294,7 +294,7 @@ type opaque struct {
 }
 ```
 
-ポイントは [`downcast()`](https://github.com/mpyw/feature/blob/375ee78e6e80728c97be46428cbd5913adca5cb2/feature.go#L113-L115) という **unexported メソッド** を interface に含めていること。これにより，以下のような長所が生まれます。
+ポイントは [`downcast()`](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L113-L115) という **unexported メソッド** を interface に含めていること。これにより，以下のような長所が生まれます。
 
 - パッケージ外から [`Key[V]`](https://pkg.go.dev/github.com/mpyw/feature#Key) interface を実装することが **不可能** になる
 - 利用者は必ず [`feature.New()`](https://pkg.go.dev/github.com/mpyw/feature#New) 等を経由してキーを生成する必要があり， **勝手に構造体を初期化されて不整合な状態になることを防げる**
@@ -365,7 +365,7 @@ type BoolKey interface {
 
 ### 空構造体の罠
 
-上述した [`opaque`](https://github.com/mpyw/feature/blob/375ee78e6e80728c97be46428cbd5913adca5cb2/feature.go#L398-L402) を最初は空構造体にしていました。自信満々で書き上げた衝突回避確認のテストが無惨にも大失敗していて，何事かと思ったら…既にコメントでちらっと説明したように， [`opaque`](https://github.com/mpyw/feature/blob/375ee78e6e80728c97be46428cbd5913adca5cb2/feature.go#L398-L402) 構造体へのポインタが全部同じアドレスになってしまいました。
+上述した [`opaque`](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L392-L396) を最初は空構造体にしていました。自信満々で書き上げた衝突回避確認のテストが無惨にも大失敗していて，何事かと思ったら…既にコメントでちらっと説明したように， [`opaque`](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L392-L396) 構造体へのポインタが全部同じアドレスになってしまいました。
 
 ```go
 type opaque struct{}  // ❌ これだと全部同じアドレス
@@ -380,7 +380,7 @@ Go ではゼロサイズの構造体へのポインタは，コンパイラの�
 
 ## 設計の変遷: noCopy ハックをやめた話
 
-[`opaque`](https://github.com/mpyw/feature/blob/375ee78e6e80728c97be46428cbd5913adca5cb2/feature.go#L398-L402) 導入よりもさらに前，最初は `key` 構造体自身をポインタとして引き回して，それをコンテキストキーにしていました。コピーされると困るので，以下で紹介されている **noCopy ハック** を入れていました。
+[`opaque`](https://github.com/mpyw/feature/blob/13a0bcf31d1a893a11e45d34e6c1dd624687e43e/feature.go#L392-L396) 導入よりもさらに前，最初は `key` 構造体自身をポインタとして引き回して，それをコンテキストキーにしていました。コピーされると困るので，以下で紹介されている **noCopy ハック** を入れていました。
 
 https://devlights.hatenablog.com/entry/2024/11/19/073000
 
