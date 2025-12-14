@@ -3,7 +3,7 @@ title: "Feature Flag の量産に耐えられる Go のライブラリを作り�
 emoji: "🚩"
 type: "tech"
 topics: ["go", "context", "featureflags", "oss", "generics"]
-published: false
+published: true
 ---
 
 :::message
@@ -11,12 +11,12 @@ Go ではタブインデントが推奨されていますが，この記事で�
 :::
 
 :::message
-この記事は 7 割ぐらい AI が書いています。
+この記事は 6 割ぐらい AI が書いています。
 :::
 
 # ご挨拶
 
-この記事は [Go - Qiita Advent Calendar 2025](https://qiita.com/advent-calendar/2025/go) (Series 2) の XX 日目の記事です。実は今回 2 回目の参加です。空いてる日があったので，ちょうどいい小ネタで埋めさせてもらいます。
+この記事は [Go - Qiita Advent Calendar 2025](https://qiita.com/advent-calendar/2025/go) (Series 2) の 15 日目の記事です。実は今回 2 回目の参加です。空いてる日があったので，ちょうどいい小ネタで埋めさせてもらいます。
 
 ↓ 前回の記事
 https://zenn.dev/mpyw/articles/new-relic-go-agent-struggle
