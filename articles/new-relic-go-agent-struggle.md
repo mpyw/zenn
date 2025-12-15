@@ -567,6 +567,55 @@ https://pkg.go.dev/github.com/rotisserie/eris
 newrelic.FromContext(ctx).NoticeError(err)
 ```
 
+:::message
+**panic を `recover()` した場合の注意点**
+
+panic を `recover()` で捕捉した値は `interface{}` 型であり，そのまま `NoticeError()` に渡すことはできません。また，単純に `error` 型に変換しただけでは `ErrorClass` が `"panic"` にならず，スタックトレースも適切に取得されません。
+
+この場合は `ErrorClass()` と `StackTrace()` メソッドを実装したカスタムエラー型を用意します。[`newrelic.NewStackTrace()`](https://pkg.go.dev/github.com/newrelic/go-agent/v3/newrelic#NewStackTrace) を使うと，呼び出し時点でのスタックトレースを取得できます。
+
+```go
+// panicError は panic を error として扱うための型
+// New Relic の ErrorClass() と StackTrace() インタフェースを満たす
+type panicError struct {
+    msg   string
+    cause error // ← 元のエラー（panic が error だった場合）
+    stack []uintptr
+}
+
+func (e panicError) Error() string         { return e.msg }
+func (e panicError) ErrorClass() string    { return "panic" }
+func (e panicError) StackTrace() []uintptr { return e.stack }
+func (e panicError) Unwrap() error         { return e.cause }
+
+// NewPanicError は recover() で捕捉した値を error に変換する
+// 返り値は NoticeError() に渡すと ErrorClass が "panic" になり，スタックトレースも設定される
+func NewPanicError(p any) error {
+    var (
+        msg string
+        cause error
+    )
+    
+    if e, ok := p.(error); ok {
+        msg = e.Error()
+        cause = e // ← 元のエラーを保持
+    } else {
+        msg = fmt.Sprintf("%v", p)
+    }
+
+    stack := newrelic.NewStackTrace()
+
+    return panicError{
+        msg:   msg,
+        cause: cause,
+        stack: stack[1:], // ← この関数自身をスタックトレースから除外
+    }
+}
+```
+
+使用例は「[コマンドハンドラの計装](#2.-コマンドハンドラの計装)」を参照してください。
+:::
+
 ### [B] HTTP レスポンスステータスコード
 
 New Relic の HTTP インテグレーションを利用している場合， HTTP レスポンスが書き込まれる際のステータスコードがチェックされます。説明用に，[導入ガイド](https://github.com/newrelic/go-agent/blob/e9f24662e50b29c3e8eeba5a299780edcda9cc17/GUIDE.md#transactions)を参照しましょう。
@@ -663,7 +712,26 @@ func(config *newrelic.Config) {
 
 トランザクションの終端処理として `defer txn.End()` の形で記載していた場合， Panic が発生した場合に `recover()` で捕捉され，エラーとして通知されます。
 
-実際にはミドルウェアレイヤーで `recover()` 処理が入り，それが 500 Internal Server Error に変換されるような実装になっていることがほとんどでしょう。そのためあまり日の目を見ることはないかもしれませんが，保険的にはつけておいて損はない機能だと思います。
+実際にはミドルウェアレイヤーで `recover()` 処理が入り，それが 500 Internal Server Error に変換されるような実装になっていることがほとんどでしょう。そのため出番自体は少ないかもしれませんが，一見すると「保険的につけておいて損はない機能」に見えます。
+
+:::message alert
+**`RecordPanics` は使わないでください**
+
+この機能には以下の問題があり，**使用を推奨しません**。
+
+1. **`defer txn.End()` でないと動作しない**: Go の `recover()` は「直接 defer された関数内」でのみ動作します。そのため，この記事でも推奨している `internal/telemetry` のような抽象化レイヤーを介して `defer wrapper.End()` の形で呼び出すと，`recover()` が効かなくなります。**抽象化と `RecordPanics` は両立しません。**
+
+2. **責務の混乱**: APM は「計測レイヤー」であり，エラーハンドリングの責務を持つべきではありません。 **panic を APM 層で握りつぶすと，呼び出し元には `err = nil` として返ります。その結果，バッチの終了ステータスが 0（成功）になったり，リトライやアラートが発火しなくなる可能性があります。**
+
+3. **エラーと panic の一貫性がなくなる**: **通常のエラーは `return err` で上位に伝播しますが， `RecordPanics` を使うと panic だけ APM 層で握りつぶされます。同じ「異常系」なのに挙動が全く違うのは混乱の元です。**
+:::
+
+**代わりに，明示的な `recover()` をビジネスロジック側で実装してください。**
+
+- **API の場合**: Recover ミドルウェアを他のミドルウェアの前後に配置することで，HTTP ハンドラに対するリカバリとミドルウェア群に対するリカバリの両方を担保できます（この記事の「[HTTP ミドルウェアによる計装](#2.-http-ミドルウェアによる計装)」のコード例を参照）。
+- **バッチの場合**: Action ハンドラをラップして `recover()` 処理を行います（この記事の「[コマンドハンドラの計装](#2.-コマンドハンドラの計装)」のコード例を参照）。
+
+いずれの場合も， panic を `recover()` した後に New Relic へエラー報告する際は，「[panic を `recover()` した場合の注意点](#[a]-明示的なエラー通知)」で説明した `NewPanicError` 関数を使用してください。この方式なら，panic が正しくエラーとして上位に伝播し，APM とエラーハンドリングの責務が分離され，通常のエラーフローとの整合性も保たれます。
 
 # New Relic 導入: API 基本編
 
@@ -703,11 +771,12 @@ App, err = newrelic.NewApplication(
     newrelic.ConfigAppLogDecoratingEnabled(true),
 
     // トランザクションの defer txn.End() で panic を捕捉し，エラーイベントを APM に報告するかを設定
-    // 但し，ここに来るまでの HTTP Middleware レイヤーで recover されていることが多いため，効果が薄い場合がある
-    // 保険的な意味合いで有効化しておくのが無難
-    func(config *newrelic.Config) {
-        config.ErrorCollector.RecordPanics = true
-    },
+    // 詳しくは「[C] Panic の捕捉」セクションを参照
+    // 抽象化レイヤーとの相性や責務分離の観点から，基本的には無効のままにして
+    // ビジネスロジック側で明示的に recover() することを推奨
+    // func(config *newrelic.Config) {
+    //     config.ErrorCollector.RecordPanics = true
+    // },
 
     // New Relic エージェントの内部動作をログ出力するためのロガーを設定
     // デフォルトでは無効，以下のいずれかで設定
@@ -981,27 +1050,29 @@ func installNewRelicFeaturesRecursive(cmd *cli.Command) {
 
 // Action ハンドラをラップしてトランザクションを開始・終了させる
 func wrapActionHandler(action cli.ActionFunc) cli.ActionFunc {
-    return func(ctx *cli.Context) error {
+    return func(cliCtx *cli.Context) (err error) { // ← named return
         // トランザクション開始・自動終了
-        txn := App.StartTransaction(TransactionNameFromContext(ctx.Context))
+        txn := App.StartTransaction(TransactionNameFromContext(cliCtx.Context))
         defer txn.End()
 
         // コンテキストにトランザクションを埋め込む
-        ctx.Context = newrelic.NewContext(ctx.Context, txn)
+        cliCtx.Context = newrelic.NewContext(cliCtx.Context, txn)
 
         // Logs in Context を有効にする
-        ctx.Context = WithContextEnrichment(ctx.Context) // ← この記事の中で既に提示した関数を参照
+        cliCtx.Context = WithContextEnrichment(cliCtx.Context) // ← この記事の中で既に提示した関数を参照
 
-        // 元の Action ハンドラを呼び出す
-        if err := action(ctx); err != nil {
-            // Logs in Context 対応のもとに New Relic にエラーを報告
-            newrelic.FromContext(ctx.Context).NoticeError(err)
+        // panic も error もまとめて defer で処理
+        // NewPanicError の定義は「[A] 明示的なエラー通知」を参照
+        defer func() {
+            if r := recover(); r != nil {
+                err = NewPanicError(r)
+            }
+            if err != nil {
+                newrelic.FromContext(cliCtx.Context).NoticeError(err)
+            }
+        }()
 
-            // 終了ステータスを非ゼロにするためにエラーを返す
-            return err
-        }
-
-        return nil
+        return action(cliCtx)
     }
 }
 ```
