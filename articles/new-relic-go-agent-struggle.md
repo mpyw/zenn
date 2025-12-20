@@ -132,18 +132,39 @@ defer (*newrelic.Segment).End(
 
 原始的な方法をコード生成アプローチで改善したものです。実用性を考えると，一番推奨される方法です。コード生成自体は Go のカルチャーともフィットしていると思います。
 
-https://pkg.go.dev/github.com/budougumi0617/nrseg
+:::message
+かつてはこの領域では [`nrseg`](https://pkg.go.dev/github.com/budougumi0617/nrseg) が唯一の選択肢でした。シンプルで使いやすいツールでしたが，生成されるコードが New Relic 依存で固定されていたり，[`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context) や [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) などのコンテキストキャリアに対応していなかったりと，融通が効かない部分がありました。
+
+そこで，より柔軟なコード生成ツールとして [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) を OSS として公開しました。
+:::
+
+https://pkg.go.dev/github.com/mpyw/ctxweaver
+
+[`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は Go テンプレートで生成コードを完全にカスタマイズできるコードジェネレータです。 [`context.Context`](https://pkg.go.dev/context#Context) だけでなく [`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context), [`gin.Context`](https://pkg.go.dev/github.com/gin-gonic/gin#Context), [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) などのコンテキストキャリアにも対応しており，カスタムキャリアの定義も可能です。
 
 ```go
 func DoSomething(ctx context.Context) {
-    // ↓ 自動生成ツールで挿入
-    defer newrelic.FromContext(ctx).StartSegment("DoSomething").End()
+    // ↓ ctxweaver で自動挿入
+    defer newrelic.FromContext(ctx).StartSegment("myapp.DoSomething").End()
 
     // ...
 }
 ```
 
-上記のように生成されるコードが先頭 1 行で収まる程度であれば上出来でしょう。但し， New Relic にアプリケーションコードを直接依存させず，自前で用意したパッケージで具象を隠蔽することを考える…とか欲張りだすと，基本的には自作することになるかなと思います。
+設定ファイル `ctxweaver.yaml` で生成コードをカスタマイズします。
+
+```yaml
+template: |
+  defer newrelic.FromContext({{.Ctx}}).StartSegment({{.FuncName | quote}}).End()
+
+imports:
+  - github.com/newrelic/go-agent/v3/newrelic
+
+patterns:
+  - ./...
+
+test: false
+```
 
 :::message
 CI で更新適用後， `git diff --exit-code` で更新漏れを検出しましょう。
@@ -156,8 +177,6 @@ https://pkg.go.dev/github.com/newrelic/go-easy-instrumentation
 
 本音を言うと，通信境界だったらミドルウェアが普通用意されているものだし，ここを狙い撃ちにしたコード生成はかなり悪手だと思います。
 :::
-
-> 💬 *率直に言うと: Go に一番適した方法ではあるが，ツールの融通が効かなくて自作しがち。私はしました…*
 
 ## [C] ビルド時に透過的にコード変換ツールで干渉
 
@@ -878,13 +897,11 @@ func ContextEnrichmentMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 ## 3. 全関数計装
 
-既に紹介した [`nrseg`](https://pkg.go.dev/github.com/budougumi0617/nrseg) をご利用ください。コンテキストにトランザクションを埋め込んでいれば，このライブラリが対応してくれる内容で十分価値は発揮できるはずです。
+既に紹介した [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) をご利用ください。コンテキストにトランザクションを埋め込んでいれば，このツールが対応してくれる内容で十分価値は発揮できるはずです。
 
-https://github.com/budougumi0617/nrseg
+https://github.com/mpyw/ctxweaver
 
-> 💬 *べっとり [`newrelic`](https://pkg.go.dev/github.com/newrelic/go-agent) パッケージ依存のコードがばら撒かれるのが嫌だって？その場合は `internal/telemetry` パッケージを自前で用意し，それをターゲットにした自作版 [`nrseg`](https://pkg.go.dev/github.com/budougumi0617/nrseg) を作ってください。私は作りましたので（2回目）*
-
-> 💬 [`context.Context`](https://pkg.go.dev/context#Context) [`*http.Request`](https://pkg.go.dev/http#Request) だけじゃなくて [`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context) も対応してほしい？ [Issue](https://github.com/budougumi0617/nrseg/issues/17) は上がってるのでコントリビューションのチャンスですよ！私はそこまでの時間は取れませんでしたが，自作版ではこれらすべての型に対応していました。
+[`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は Go テンプレートで生成コードをカスタマイズできるため，べっとり [`newrelic`](https://pkg.go.dev/github.com/newrelic/go-agent) パッケージ依存のコードがばら撒かれるのが嫌な場合でも， `internal/telemetry` パッケージを自前で用意してそれをターゲットにしたテンプレートを書けば対応できます。また [`context.Context`](https://pkg.go.dev/context#Context) や [`*http.Request`](https://pkg.go.dev/http#Request) だけでなく， [`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context) にも標準で対応しています。
 
 ----
 
@@ -1089,9 +1106,7 @@ for _, cmd := range app.Commands {
 
 ## 3. 全関数計装
 
-また API 同様に [`nrseg`](https://pkg.go.dev/github.com/budougumi0617/nrseg) が使えると思います。
-
-> 💬 [`context.Context`](https://pkg.go.dev/context#Context) [`*http.Request`](https://pkg.go.dev/http#Request) だけじゃなくて [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) も対応してほしい？自作版で対応してください。私は作りましたので（3回目）
+また API 同様に [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) が使えます。 [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は [`context.Context`](https://pkg.go.dev/context#Context) や [`*http.Request`](https://pkg.go.dev/http#Request) だけでなく [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) にも標準で対応しているため，バッチアプリケーションでもそのまま利用できます。
 
 ----
 
@@ -1564,12 +1579,52 @@ go func (ctx context.Context, carrier *TracePropagationCarrier) {
 - 並行処理での [`(*newrelic.Transaction).NewGoroutine()`](https://pkg.go.dev/github.com/newrelic/go-agent#Transaction.NewGoroutine) 対応漏れ
 - 遅延処理での分散トレーシング対応漏れ
 
-全部あるあるです。Linter，欲しいですよね。私も欲しいのでプロジェクト内部用ですが最低限の目的を果たせるものを作りました。これを読んでいるあなたも是非，プロジェクトメンバーのヒューマンエラーをカバーするため，頑張ってください。
-（ここの解説を始めると，この記事を読んでくれる人がいなくなるぐらい分量がとんでもないことになるはず…）
+全部あるあるです。Linter，欲しいですよね。かつてはプロジェクト内部用に自作していたのですが，汎用性を持たせて OSS として公開しました。
 
-一番上の [`zerolog`](https://pkg.go.dev/github.com/rs/zerolog) の件については， [`zerologlint`](https://github.com/ykadowak/zerologlint) という Linter に Feature Request を送りました。ライブラリ品質で仕上げるのはかなり難しいと思いますが，もし興味がある方はコントリビューションしてみてください。
+### goroutinectx: Goroutine への context 伝播漏れを検出
 
-https://github.com/ykadowak/zerologlint/issues/22
+https://pkg.go.dev/github.com/mpyw/goroutinectx
+
+[`goroutinectx`](https://pkg.go.dev/github.com/mpyw/goroutinectx) は，Goroutine に [`context.Context`](https://pkg.go.dev/context#Context) が適切に伝播されているかを検査する Linter です。 `go func()` や [`errgroup.Group`](https://pkg.go.dev/golang.org/x/sync/errgroup#Group), [`sync.WaitGroup`](https://pkg.go.dev/sync#WaitGroup) (Go 1.25+) のクロージャで context が使われているかをチェックします。
+
+```go
+func handler(ctx context.Context) {
+    // ❌ Bad: context を渡していない
+    go func() {
+        doSomething()
+    }()
+
+    // ✅ Good: context を渡している
+    go func() {
+        doSomething(ctx)
+    }()
+}
+```
+
+また `-goroutine-deriver` オプションを使うと， [`(*newrelic.Transaction).NewGoroutine()`](https://pkg.go.dev/github.com/newrelic/go-agent#Transaction.NewGoroutine) のような APM 用の context 導出関数が呼ばれているかもチェックできます。
+
+### zerologlintctx: zerolog での .Ctx(ctx) 呼び出し漏れを検出
+
+https://pkg.go.dev/github.com/mpyw/zerologlintctx
+
+[`zerologlintctx`](https://pkg.go.dev/github.com/mpyw/zerologlintctx) は， [`zerolog`](https://pkg.go.dev/github.com/rs/zerolog) のロギングチェーンで `.Ctx(ctx)` が適切に呼び出されているかを検査する Linter です。関数パラメータで [`context.Context`](https://pkg.go.dev/context#Context) が利用可能なのに，ロギング時に context を渡していないケースを検出します。
+
+```go
+func handler(ctx context.Context, log zerolog.Logger) {
+    // ❌ Bad: .Ctx(ctx) がない
+    log.Info().Str("key", "value").Msg("hello")
+
+    // ✅ Good: .Ctx(ctx) を含む
+    log.Info().Ctx(ctx).Str("key", "value").Msg("hello")
+
+    // ✅ Also Good: log.Ctx(ctx) から取得
+    log.Ctx(ctx).Info().Str("key", "value").Msg("hello")
+}
+```
+
+:::message
+遅延処理での分散トレーシング対応漏れについては，現時点では Linter を用意していません。遅延処理自体がプロジェクトごとに実装パターンが異なるため，汎用的な検出が難しいためです。
+:::
 
 # あとがき
 
