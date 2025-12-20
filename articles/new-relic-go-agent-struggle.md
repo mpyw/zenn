@@ -140,7 +140,7 @@ defer (*newrelic.Segment).End(
 
 https://pkg.go.dev/github.com/mpyw/ctxweaver
 
-[`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は Go テンプレートで生成コードを完全にカスタマイズできるコードジェネレータです。 [`context.Context`](https://pkg.go.dev/context#Context) だけでなく [`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context), [`gin.Context`](https://pkg.go.dev/github.com/gin-gonic/gin#Context), [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) などのコンテキストキャリアにも対応しており，カスタムキャリアの定義も可能です。
+[`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は Go テンプレートで生成コードを完全にカスタマイズできるコードジェネレータです。 [`context.Context`](https://pkg.go.dev/context#Context) や [`*http.Request`](https://pkg.go.dev/net/http#Request) だけでなく [`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context), [`gin.Context`](https://pkg.go.dev/github.com/gin-gonic/gin#Context), [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) などのコンテキストキャリアにも対応しており，カスタムキャリアの定義も可能です。
 
 ```go
 func DoSomething(ctx context.Context) {
@@ -901,7 +901,7 @@ func ContextEnrichmentMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 https://github.com/mpyw/ctxweaver
 
-[`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は Go テンプレートで生成コードをカスタマイズできるため，べっとり [`newrelic`](https://pkg.go.dev/github.com/newrelic/go-agent) パッケージ依存のコードがばら撒かれるのが嫌な場合でも， `internal/telemetry` パッケージを自前で用意してそれをターゲットにしたテンプレートを書けば対応できます。また [`context.Context`](https://pkg.go.dev/context#Context) や [`*http.Request`](https://pkg.go.dev/http#Request) だけでなく， [`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context) にも標準で対応しています。
+[`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は Go テンプレートで生成コードをカスタマイズできるため，べっとり [`newrelic`](https://pkg.go.dev/github.com/newrelic/go-agent) パッケージ依存のコードがばら撒かれるのが嫌な場合でも， `internal/telemetry` パッケージを自前で用意してそれをターゲットにしたテンプレートを書けば対応できます。また [`context.Context`](https://pkg.go.dev/context#Context) や [`*http.Request`](https://pkg.go.dev/net/http#Request) だけでなく， [`echo.Context`](https://pkg.go.dev/github.com/labstack/echo#Context) にも標準で対応しています。
 
 ----
 
@@ -1106,7 +1106,7 @@ for _, cmd := range app.Commands {
 
 ## 3. 全関数計装
 
-また API 同様に [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) が使えます。 [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は [`context.Context`](https://pkg.go.dev/context#Context) や [`*http.Request`](https://pkg.go.dev/http#Request) だけでなく [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) にも標準で対応しているため，バッチアプリケーションでもそのまま利用できます。
+また API 同様に [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) が使えます。 [`ctxweaver`](https://pkg.go.dev/github.com/mpyw/ctxweaver) は [`context.Context`](https://pkg.go.dev/context#Context) や [`*http.Request`](https://pkg.go.dev/net/http#Request) だけでなく [`*cli.Context`](https://pkg.go.dev/github.com/urfave/cli#Context) にも標準で対応しているため，バッチアプリケーションでもそのまま利用できます。
 
 ----
 
