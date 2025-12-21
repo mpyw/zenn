@@ -160,8 +160,9 @@ template: |
 imports:
   - github.com/newrelic/go-agent/v3/newrelic
 
-patterns:
-  - ./...
+packages:
+  patterns:
+    - ./...
 
 test: false
 ```
