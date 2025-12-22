@@ -11,6 +11,8 @@
 
 ## Go
 
+- **[🔮 Linter 開発こそ Vibe Coding の最も優れた適用例の 1 つである](https://zenn.dev/mpyw/articles/go-linter-vibe-coding)**
+  &nbsp;[[✍Edit]️](./articles/go-linter-vibe-coding.md)
 - **[🚩 Feature Flag の量産に耐えられる Go のライブラリを作りました](https://zenn.dev/mpyw/articles/go-context-feature-flags)**
   &nbsp;[[✍Edit]️](./articles/go-context-feature-flags.md)
 - **[☠️ New Relic Go Agent 完全理解・実践導入ガイド](https://zenn.dev/mpyw/articles/new-relic-go-agent-struggle)**
