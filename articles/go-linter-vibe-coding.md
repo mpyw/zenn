@@ -3,7 +3,7 @@ title: "Linter 開発こそ Vibe Coding の最も優れた適用例の 1 つで�
 emoji: "🔮"
 type: "idea"
 topics: ["go", "linter", "ai", "vibecoding", "oss"]
-published: false
+published: true
 ---
 
 :::message
