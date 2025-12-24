@@ -4,6 +4,7 @@ emoji: "🔒"
 type: "tech"
 topics: ["postgresql", "postgres", "mysql", "database", "redis"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 トランザクション分離レベルについての教養があったほうがこの記事の内容を理解しやすいため，必要に応じてまず以下を参照されたい。

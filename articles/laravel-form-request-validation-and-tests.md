@@ -4,6 +4,7 @@ emoji: "🤔"
 type: "tech"
 topics: ["php", "laravel", "validation", "test"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 ## Laravel の FormRequest とは？

@@ -4,6 +4,7 @@ emoji: "🛒"
 type: "tech"
 topics: ["postgresql", "postgres", "mysql", "database", "rdb"]
 published: false
+publication_name: "yumemi_inc"
 ---
 
 # この記事のテーマ

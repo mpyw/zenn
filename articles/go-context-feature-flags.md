@@ -4,6 +4,7 @@ emoji: "🚩"
 type: "tech"
 topics: ["go", "context", "featureflags", "oss", "generics"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 :::message

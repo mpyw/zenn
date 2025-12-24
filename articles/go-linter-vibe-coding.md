@@ -4,6 +4,7 @@ emoji: "🔮"
 type: "idea"
 topics: ["go", "linter", "ai", "vibecoding", "oss"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 :::message

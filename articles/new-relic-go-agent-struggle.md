@@ -4,6 +4,7 @@ emoji: "☠️"
 type: "tech"
 topics: ["go", "newrelic", "telemetry", "apm", "logging"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 :::message

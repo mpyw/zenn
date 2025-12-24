@@ -4,6 +4,7 @@ emoji: "🥹"
 type: "tech"
 topics: ["go", "php", "di", "logger", "アンチパターン"]
 published: true
+publication_name: "yumemi_inc"
 ---
 
 # はじめに
