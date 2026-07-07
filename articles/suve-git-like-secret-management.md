@@ -320,11 +320,21 @@ suve azure param   ...  # Azure App Configuration
 また，各サービスには **普段呼び慣れている名前のエイリアス** をちゃんと用意しています。「Parameter Store のことは SSM って呼んでる」「Key Vault は kv でしょ」という人も，いつもの名前でそのまま叩けます。
 
 ```bash
-suve aws ps ...  # AWS SSM Parameter Store（param / ps / ssm）
-suve aws sm ...  # AWS Secrets Manager（secret / sm）
-suve gcp sm ...  # Google Cloud (google / gcp) Secret Manager (secret / sm)
-suve az kv  ...  # Azure Key Vault (secret / kv)
-suve az ac  ...  # Azure App Configuration (param / appconfig / appcfg / ac)
+# 普段 CLI で呼び慣れてるやつ派
+suve aws ssm            ...  # AWS SSM Parameter Store
+suve aws secretsmanager ...  # AWS Secrets Manager
+suve gcloud secrets     ...  # Google Cloud Secret Manager
+suve az keyvault        ...  # Azure Key Vault
+suve az appconfig       ...  # Azure App Configuration
+```
+
+```bash
+# 最短派
+suve aws ps ...  # AWS SSM Parameter Store
+suve aws sm ...  # AWS Secrets Manager
+suve gcp sm ...  # Google Cloud Secret Manager
+suve az kv  ...  # Azure Key Vault
+suve az ac  ...  # Azure App Configuration
 ```
 
 ## bare alias：環境から文脈を推論
