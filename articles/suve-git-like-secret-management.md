@@ -40,13 +40,47 @@ https://github.com/mpyw/suve
 
 特徴を一言でまとめると，以下のようになります。
 
-- **Git ライクなコマンド体系**： `show` `log` `diff` `ls` `tag` `stash` など，Git ユーザーなら説明不要のコマンド群
+- **Git ライクなコマンド体系**： `show` `log` `diff` `ls` `tag` など，Git ユーザーなら説明不要のコマンド群
 - **ステージングワークフロー**： `edit` → `status` → `diff` → `apply` で，変更内容をローカルで査読してからクラウドに反映
 - **バージョンナビゲーション**： `#VERSION` `~SHIFT` `:LABEL` 構文で過去バージョンを自在に参照
 - **マルチクラウド対応**：AWS / Google Cloud / Azure を統一された UX で操作
 - **GUI モード**： `--gui` フラグでデスクトップアプリとしても起動可能
 
+:::message
+用語は AWS フレンドリーに定義されています。特に「タグ」「ラベル」「ネームスペース」が指すものの違いに注意してください。
+
+| プロバイダ | suve におけるタグ | suve におけるラベル | suve におけるネームスペース |
+|:---|:---|:---|:---|
+| AWS | リソースに付与するタグ | Secrets Manager のバージョンに付与するステージングラベル<br>（`AWSCURRENT`・`AWSPREVIOUS`・任意文字列） | - |
+| Google Cloud | リソースに付与する **ラベル** | - | - |
+| Azure | リソースの **特定バージョン** に付与するタグ | - | App Configuration 上で実質的な複合主キーを構成する **ラベル**<br>（空文字列・`dev`・`prd` などの任意文字列） |
+:::
+
 # インストール
+
+:::message
+Linux で GUI を使う場合は GTK3 と WebKit2GTK が必要です。依存を避けたい場合や CI などヘッドレス環境では CLI のみのビルドを推奨します。
+:::
+
+[mise](https://mise.jdx.dev/)（macOS / Linux / Windows）の場合：
+
+```bash
+# フル版（CLI + GUI）
+mise use -g "github:mpyw/suve"
+
+# CLI のみ（GUI 依存なし，Linux ではこちらを推奨）
+mise use -g "github:mpyw/suve[matching=cli]"
+```
+
+[aqua](https://aquaproj.github.io/)（macOS / Linux / Windows）の場合：
+
+```bash
+aqua g -i mpyw/suve
+```
+
+:::message
+macOS / Windows では GUI 付きのフル版が入りますが，**Linux では CLI のみ**（GUI 依存なしの静的ビルド）になります。Linux で GUI が欲しい場合は他の方法をご利用ください。
+:::
 
 Homebrew（macOS / Linux）の場合：
 
@@ -65,11 +99,7 @@ scoop bucket add mpyw https://github.com/mpyw/scoop-bucket.git
 scoop install suve
 ```
 
-Go ユーザーなら `go install` でも入ります（CLI のみ）：
-
-```bash
-go install github.com/mpyw/suve/cmd/suve@latest
-```
+# 認証方式
 
 認証は各クラウドの標準的な認証チェーンにそのまま乗っかります。AWS なら環境変数・共有認証ファイル・IAM ロール，Google Cloud なら Application Default Credentials，Azure なら DefaultAzureCredential です。**つまり `aws-cli` や `gcloud` や `az` が既に動いている環境なら，追加の設定なしでそのまま動きます。**
 
@@ -276,23 +306,12 @@ Applying SSM Parameter Store parameters...
 
 `apply` は実行前に確認プロンプトを出します。間違えてステージした場合は `suve stage param reset` で個別に，`suve stage reset --all` で全部取り消せます。
 
-## stash：作業の一時退避
-
-「変更を準備したけど，反映は明日のメンテナンスウィンドウで」みたいな場面のために， `git stash` 相当の機能もあります。
-
-```bash
-suve stage stash        # ステージ内容をファイルに退避（パスフレーズを設定）
-suve stage stash show   # 退避内容をプレビュー
-suve stage stash pop    # 復元
-suve stage stash drop   # 破棄
-```
-
 ## セキュリティ面の配慮
 
 「シークレットをローカルに溜め込むのは怖くない？」という懸念はもっともです。suve では以下のように対策しています。
 
 - ステージング状態は **OS のキーチェーンに保存したデータキーで暗号化** して保持（`~/.suve/staging/` 配下）
-- stash は **Argon2 + AES-GCM によるパスフレーズベースの暗号化** を別途適用
+- ステージング内容を別環境へ持ち運ぶための `export` / `import` では，ファイルに **Argon2id + AES-GCM によるパスフレーズベースの暗号化** を別途適用
 - キーチェーンが使えない環境では `SUVE_STAGING_KEY` 環境変数によるキー指定も可能
 
 # マルチクラウド対応：「うちの会社，基本 Azure なのよね…」
