@@ -51,9 +51,9 @@ https://github.com/mpyw/suve
 
 | プロバイダ | suve におけるタグ | suve におけるラベル | suve におけるネームスペース |
 |:---|:---|:---|:---|
-| AWS | リソースに付与するタグ | Secrets Manager のバージョンに付与するステージングラベル<br>（`AWSCURRENT`・`AWSPREVIOUS`・任意文字列） | - |
+| AWS | リソースに付与するタグ | Secrets Manager のバージョンに付与するステージングラベル<br>（`AWSCURRENT` `AWSPREVIOUS` などの自動ラベルまたは任意文字列） | - |
 | Google Cloud | リソースに付与する **ラベル** | - | - |
-| Azure | リソースの **特定バージョン** に付与するタグ | - | App Configuration 上で実質的な複合主キーを構成する **ラベル**<br>（空文字列・`dev`・`prd` などの任意文字列） |
+| Azure | リソースの **特定バージョン** に付与するタグ | - | App Configuration 上で実質的な複合主キーを構成する **ラベル**<br>（未設定の空文字列または `dev` `prd` などの任意文字列） |
 :::
 
 # インストール
