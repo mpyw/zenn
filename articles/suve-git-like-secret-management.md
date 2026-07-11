@@ -23,8 +23,8 @@ Agentic AI 全盛期の昨今，コードを書くのも，テストを書くの
 
 https://github.com/mpyw/suve
 
-![CLI Demo](https://media.githubusercontent.com/media/mpyw/suve/main/demo/cli-demo.gif)
-![GUI Demo](https://media.githubusercontent.com/media/mpyw/suve/main/demo/gui-demo.gif)
+![CLI Demo](https://media.githubusercontent.com/media/mpyw/suve/main/demo/cli-demo.gif?v=931edb6)
+![GUI Demo](https://media.githubusercontent.com/media/mpyw/suve/main/demo/gui-demo.gif?v=931edb6)
 
 # suve とは
 
