@@ -1,5 +1,5 @@
 ---
-title: "Git 感覚で AWS / Google Cloud / Azure のシークレットを管理できる CLI/TUI/GUI ツール「suve」を作った"
+title: "Git 感覚で AWS / Google Cloud / Azure のシークレットを管理できる CLI/TUI/GUI ツール「suve」"
 emoji: "🔐"
 type: "tech"
 topics: ["aws", "googlecloud", "azure", "secretsmanager", "cli"]
