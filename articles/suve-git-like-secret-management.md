@@ -1,5 +1,5 @@
 ---
-title: "Git 感覚で AWS / Google Cloud / Azure のシークレットを管理できる CLI/GUI ツール「suve」を作った"
+title: "Git 感覚で AWS / Google Cloud / Azure のシークレットを管理できる CLI/TUI/GUI ツール「suve」を作った"
 emoji: "🔐"
 type: "tech"
 topics: ["aws", "googlecloud", "azure", "secretsmanager", "cli"]
@@ -17,18 +17,19 @@ Agentic AI 全盛期の昨今，コードを書くのも，テストを書くの
 
 コード管理されない部分のインフラ構成設定，そんなに高頻度ってわけでもないんですが，いざ設定するときは毎回不安になります。コードの変更なら `git diff` で差分を確認して，レビューを通して，安心してマージできるのに，**シークレットの変更だけはノーガードで本番に直接反映される**。この非対称性をずっと何とかしたいと思っていました。
 
-`aws-cli` が使える環境なら，そのまま Git みたいにパパっと作業したくないですか？ `git log` で履歴を見て， `git diff` で差分を確認して，ステージングしてから反映したくないですか？あわよくば使いやすい GUI も欲しくないですか？
+`aws-cli` が使える環境なら，そのまま Git みたいにパパっと作業したくないですか？ `git log` で履歴を見て， `git diff` で差分を確認して，ステージングしてから反映したくないですか？あわよくば使いやすい TUI や GUI も欲しくないですか？
 
 というわけで，作りました。
 
 https://github.com/mpyw/suve
 
 ![CLI Demo](https://media.githubusercontent.com/media/mpyw/suve/main/demo/cli-demo.gif?v=931edb6)
+![TUI Demo](https://media.githubusercontent.com/media/mpyw/suve/main/demo/tui-demo.gif?v=2cbc722)
 ![GUI Demo](https://media.githubusercontent.com/media/mpyw/suve/main/demo/gui-demo.gif?v=931edb6)
 
 # suve とは
 
-**suve**（**S**ecret **U**nified **V**ersioning **E**xplorer）は，クラウド上のシークレット・設定値を Git ライクなインターフェースで管理できる CLI/GUI ツールです。以下のバックエンドに対応しています。
+**suve**（**S**ecret **U**nified **V**ersioning **E**xplorer）は，クラウド上のシークレット・設定値を Git ライクなインターフェースで管理できる CLI/TUI/GUI ツールです。以下のバックエンドに対応しています。
 
 | バックエンド | コマンド | バージョン管理 |
 |:---|:---|:---|
@@ -44,6 +45,7 @@ https://github.com/mpyw/suve
 - **ステージングワークフロー**： `edit` → `status` → `diff` → `apply` で，変更内容をローカルで査読してからクラウドに反映
 - **バージョンナビゲーション**： `#VERSION` `~SHIFT` `:LABEL` 構文で過去バージョンを自在に参照
 - **マルチクラウド対応**：AWS / Google Cloud / Azure を統一された UX で操作
+- **TUI モード**： `--tui` フラグでキーボード操作のターミナル UI としても起動可能（全ビルドに同梱）
 - **GUI モード**： `--gui` フラグでデスクトップアプリとしても起動可能
 
 :::message
@@ -59,16 +61,16 @@ https://github.com/mpyw/suve
 # インストール
 
 :::message
-Linux で GUI を使う場合は GTK3 と WebKit2GTK が必要です。依存を避けたい場合や CI などヘッドレス環境では CLI のみのビルドを推奨します。
+Linux で GUI を使う場合は GTK3 と WebKit2GTK が必要です。依存を避けたい場合や CI などヘッドレス環境では CLI/TUI のみのビルドを推奨します。TUI は Pure Go 実装なので，GUI と違って **どのビルドにも依存なしで同梱** されています。
 :::
 
 [mise](https://mise.jdx.dev/)（macOS / Linux / Windows）の場合：
 
 ```bash
-# フル版（CLI + GUI）
+# フル版（CLI/TUI + GUI）
 mise use -g "github:mpyw/suve"
 
-# CLI のみ（GUI 依存なし，Linux ではこちらを推奨）
+# CLI/TUI のみ（GUI 依存なし，Linux ではこちらを推奨）
 mise use -g "github:mpyw/suve[matching=cli]"
 ```
 
@@ -79,16 +81,16 @@ aqua g -i mpyw/suve
 ```
 
 :::message
-macOS / Windows では GUI 付きのフル版が入りますが，**Linux では CLI のみ**（GUI 依存なしの静的ビルド）になります。Linux で GUI が欲しい場合は他の方法をご利用ください。
+macOS / Windows では GUI 付きのフル版が入りますが，**Linux では CLI/TUI のみ**（GUI 依存なしの静的ビルド）になります。Linux で GUI が欲しい場合は他の方法をご利用ください。
 :::
 
 Homebrew（macOS / Linux）の場合：
 
 ```bash
-# フル版（CLI + GUI）
+# フル版（CLI/TUI + GUI）
 brew install mpyw/tap/suve
 
-# CLI のみ（GUI 依存なし，Linux ではこちらを推奨）
+# CLI/TUI のみ（GUI 依存なし，Linux ではこちらを推奨）
 brew install mpyw/tap/suve-cli
 ```
 
@@ -107,7 +109,7 @@ scoop install suve
 [aws-vault](https://github.com/99designs/aws-vault) ユーザーなら `aws-vault exec my-profile -- suve param show /my/param` のようにラップするだけで一時クレデンシャルと組み合わせられます。
 :::
 
-# 基本的には GUI がおすすめ
+# 基本的には GUI か TUI がおすすめ
 
 以下では CLI 文脈で説明しますが，実際使ってみると GUI のほうが遥かに快適なので，基本的には `--gui` オプションを付与することをおすすめします。 [Wails](https://wails.io/) 製のデスクトップアプリが立ち上がり，一覧・履歴・diff の確認から編集・ステージングまで，CLI と同じ操作を GUI 上でそのまま行えます。
 
@@ -118,6 +120,12 @@ suve --gui
 :::message
 認証情報は CLI の環境変数（`AWS_PROFILE` など）から拾うことを想定しているので，スタンドアロンな GUI アプリとしてはビルドしていません。**「CLI 経由で起動可能な GUI アプリケーション」** だと思ってください。
 :::
+
+また，v1.9.0 からは `--tui` オプションで [Bubble Tea](https://github.com/charmbracelet/bubbletea) 製の **キーボード操作のターミナル UI** も起動できます。Pure Go 実装で GTK/WebKit といった依存がないため **GUI を含まないビルドにも同梱** されており，SSH 先など GUI が使えない環境ではこちらが便利です。
+
+```bash
+suve --tui
+```
 
 # 基本操作：show / log / diff
 
@@ -401,7 +409,7 @@ suve az ac  ...  # Azure App Configuration
 - `show` / `log` / `diff` と Git ライクなコマンドで，**「いつ・何が変わったか」が差分付きで追える**
 - **`edit` → `status` → `diff` → `apply` のステージングワークフロー** で，本番直編集の恐怖から解放される
 - **AWS / Google Cloud / Azure に対応** しているので，大抵のプロジェクトで同じ UX が使い回せる
-- 日常使いには `--gui` で起動する **デスクトップアプリ** が快適（CLI 経由で起動可能な GUI アプリケーション）
+- 日常使いには `--gui` で起動する **デスクトップアプリ** か，`--tui` で起動する **ターミナル UI** が快適（TUI は全ビルドに同梱で SSH 先でも使える）
 - CLI + ステージングという構造は **AI エージェントに作業を任せつつ人間が最終承認する運用** とも相性が良い
 
 `brew install mpyw/tap/suve-cli` で 10 秒で試せるので，日々コンソールぽちぽちに疲れている方はぜひ触ってみてください。フィードバックや Issue も歓迎です！
