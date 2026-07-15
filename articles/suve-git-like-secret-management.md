@@ -49,13 +49,13 @@ https://github.com/mpyw/suve
 - **GUI モード**： `--gui` フラグでデスクトップアプリとしても起動可能
 
 :::message
-用語は AWS フレンドリーに定義されています。特に「タグ」「ラベル」「ネームスペース」が指すものの違いに注意してください。
+用語は AWS フレンドリーに定義されています。特に「タグ」「ラベル」「説明」「ネームスペース」が指すものの違いに注意してください。「タグ」「説明」はいずれもリソースに付与するメタデータですが，`tag` / `untag` で操作するキーバリュー形式のものを **タグ**，`--description` フラグで付与する自由記述のテキストを **説明** として区別しています。
 
-| プロバイダ | suve におけるタグ | suve におけるラベル | suve におけるネームスペース |
-|:---|:---|:---|:---|
-| AWS | リソースに付与するタグ | Secrets Manager のバージョンに付与するステージングラベル<br>（`AWSCURRENT` `AWSPREVIOUS` などの自動ラベルまたは任意文字列） | - |
-| Google Cloud | リソースに付与する **ラベル** | - | - |
-| Azure | リソースの **特定バージョン** に付与するタグ | - | App Configuration 上で実質的な複合主キーを構成する **ラベル**<br>（未設定の空文字列または `dev` `prd` などの任意文字列） |
+| プロバイダ | suve におけるタグ | suve におけるラベル | suve における説明<br>（`--description`） | suve におけるネームスペース |
+|:---|:---|:---|:---|:---|
+| AWS | リソースに付与するタグ | Secrets Manager のバージョンに付与するステージングラベル<br>（`AWSCURRENT` `AWSPREVIOUS` などの自動ラベルまたは任意文字列） | リソースに付与する説明文<br>（Parameter Store / Secrets Manager 共通のネイティブな Description フィールド） | - |
+| Google Cloud | リソースに付与する **ラベル** | - | アノテーション `description=...` として保持 | - |
+| Azure | リソースの **特定バージョン** に付与するタグ | - | -<br>（Key Vault / App Configuration ともに非対応） | App Configuration 上で実質的な複合主キーを構成する **ラベル**<br>（未設定の空文字列または `dev` `prd` などの任意文字列） |
 :::
 
 # インストール
@@ -82,6 +82,20 @@ aqua g -i mpyw/suve
 
 :::message
 macOS / Windows では GUI 付きのフル版が入りますが，**Linux では CLI/TUI のみ**（GUI 依存なしの静的ビルド）になります。Linux で GUI が欲しい場合は他の方法をご利用ください。
+:::
+
+[npm](https://www.npmjs.com/)（macOS / Linux / Windows）の場合：
+
+```bash
+# グローバルインストール
+npm install -g @mpyw/suve
+
+# インストールせずに一度だけ実行
+npx @mpyw/suve --version
+```
+
+:::message
+プラットフォームに応じて適切なビルドが自動選択されます。aqua と同様に **macOS / Windows ではフル版，Linux では CLI/TUI のみ**（GUI 依存なしの静的ビルド）になるため，Linux では npm 経由で `--gui` は使えません。
 :::
 
 Homebrew（macOS / Linux）の場合：
