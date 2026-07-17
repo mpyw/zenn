@@ -471,7 +471,7 @@ NPM ライブラリでこの依存関係を表に落とすと，位置が一意�
 
 この順序は，参照される親である NPM パッケージを先に作り，参照する子である GitHub Release を後に作っています。依存整合性を保ったまま，不可逆な一点を **`npm publish` の成功だけ** に絞れます。それ以降は，安く再実行でき，いつか必ず完了させられるメタデータ操作しか残りません。
 
-NPM に載ったパッケージはゴミではありません。カノニカルなリリース行為に成功して得られた，**本物の成果物** です。GitHub 側の記録が一時的に遅れているだけなので，後から追いつかせれば収束します。
+NPM に載ったパッケージはゴミではありません。カノニカルなリリース行為に成功して得られた，**本物の成果物** です。GitHub 側の記録が一時的に遅れているだけなので，後から追いつかせれば収束します。失敗しても，その部分だけリトライすればいいのです。
 
 ### Order B：Release でタグを焼く → `npm publish`
 
@@ -483,104 +483,6 @@ NPM に載ったパッケージはゴミではありません。カノニカル�
 - バージョンを上げるしかなく，GitHub には **タグの墓標だけが残る**。
 
 こちらは，親である NPM パッケージより先に，子である GitHub Release を焼いています。つまり **存在しない親を指すダングリング参照を，先にイミュータブル化している** のです。
-
-## NPM から GitHub Release を復元できる
-
-Order A の決め手は，単に「GitHub のほうが後から直しやすそう」という感覚論ではありません。**NPM から GitHub Release を復元する，冪等な回復アクションを実際に書ける** ことです。
-
-設計の肝は 3 つあります。
-
-1. **カノニカルな成果物の存在を先に検証する**
-   - NPM にそのバージョンが本当に存在すると確認できた場合にしか，Release を作りません。「GitHub に記録だけがあり，NPM には成果物が無い」という逆向きの不整合を再発させない安全弁です。
-2. **タグを打つ commit を NPM 自身から復元する**
-   - 手軽な方法なら，`npm view <pkg>@<ver> gitHead` から publish 時の HEAD の SHA を取得できます。
-   - より堅牢に復元するなら，provenance の SLSA predicate に署名付きで記録されたソース commit を使えます。OIDC Trusted Publishing では provenance が自動付与されるため，**OIDC で publish していたおかげで，回復まで「正典」にできる** わけです。記事前半で説明した provenance が，ここで効いてきます。
-3. **すべてを冪等にする**
-   - tag は無ければ作り，有れば触らない。Release も無ければ作り，有れば何もしない。何度実行しても同じ完成状態へ収束させます。
-
-### 回復用ワークフロー
-
-たとえば `@mpyw/suve` を対象にするなら，次のような `workflow_dispatch` を用意できます。
-
-```yaml
-# .github/workflows/recover-release.yml
-name: Recover GitHub Release from npm
-run-name: "Recover release for ${{ inputs.version }}"
-
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "既に npm に publish 済みのバージョン（例: 1.2.3）"
-        required: true
-        type: string
-      sha:
-        description: "（任意）タグを打つ commit。省略時は npm から復元"
-        required: false
-        type: string
-
-permissions:
-  contents: write
-
-jobs:
-  recover:
-    runs-on: ubuntu-latest
-    steps:
-      # 1. カノニカルな成果物が本当に存在するか検証（無ければ回復対象ではない）
-      - name: Verify the version exists on npm
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          if ! npm view "@mpyw/suve@${VERSION}" version >/dev/null 2>&1; then
-            echo "npm に @mpyw/suve@${VERSION} が存在しません。中止します。"
-            exit 1
-          fi
-
-      # 2. タグを打つ commit を npm 自身（gitHead）から復元
-      - name: Resolve source commit
-        id: sha
-        env:
-          VERSION: ${{ inputs.version }}
-          INPUT_SHA: ${{ inputs.sha }}
-        run: |
-          sha="$INPUT_SHA"
-          if [ -z "$sha" ]; then
-            sha=$(npm view "@mpyw/suve@${VERSION}" gitHead)
-          fi
-          if [ -z "$sha" ]; then
-            echo "commit を特定できません。provenance を確認するか sha を手動指定してください。"
-            exit 1
-          fi
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-
-      # 3. Release を冪等に作成（tag は --target で無ければ生成。既存ならスキップ）
-      - name: Create release if missing
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
-          SHA: ${{ steps.sha.outputs.sha }}
-        run: |
-          if gh release view "v${VERSION}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release v${VERSION} は既に存在します。何もしません。"
-          else
-            gh release create "v${VERSION}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --target "$SHA" \
-              --generate-notes
-          fi
-```
-
-この例では `git tag` ステップを別に書いていません。`gh release create --target <sha>` は，タグが存在しなければ指定した commit にタグを生成するため，tag と Release の回復を 1 本にまとめられます。既に Release が存在すれば何もしないので，失敗後に何度起動しても安全です。
-
-:::message alert
-**Order A では，この回復アクションが「NPM には載ったが Release が無い」という状態を，ワンボタンで前へ収束させます。** さらに堅牢な運用では，回復元の SHA を NPM パッケージ自身の署名付き provenance に基づいて確定できます。カノニカルなソース commit から GitHub 側を復元するため，回復経路へ別の commit を紛れ込ませる余地がありません。**OIDC で publish していたおかげで，回復まで「正典」になる** のです。
-
-**Order B では，そもそも同じ回復アクションを書きようがありません。** NPM から恒久的に publish を拒否されたなら，先に焼いたタグの墓標を消す手段が存在しないからです。
-
-参照整合性の言葉に直すと，この回復アクションは NPM という親の `gitHead` / provenance を読み，GitHub Release という子を再構築しています。**子は親のビューとして再生成できますが，親は子から導出できません。** 焼いたタグという子の墓標から，拒否された `npm publish` という親を作り出すことは原理的に不可能です。
-
-したがって，**「回復アクションが書けるかどうか」自体が，2 つの順序にある非対称性の証明** になっています。Order A でだけ回復アクションを書けるのは，親から子を作る正しい依存方向を守っているからです。
-:::
 
 ## 順序では救えない失敗もある
 
@@ -594,7 +496,7 @@ jobs:
 
 記事のパターン 2 で説明した `gh release create` も，まさに同じ構造を持っています。失敗しやすいアセットアップロードを Draft 中に済ませ，全アセットが揃った最後の一瞬だけ atomic publish する。これは **検証と失敗可能な処理を `COMMIT` より前へ寄せる** という，まったく同じ原則です。
 
-**依存の中心（独立した側）を先に作り，それに依存する記録を，後続の安価で冪等な回復可能操作にする。** これが主原則です。しかも NPM ライブラリでは，その独立した側がたまたま恒久的に拒否されうる操作でもあるため，先頭へ置けば失敗コストまでタダになります。
+**依存の中心（独立した側）を先に作り，それに依存する記録を，後続の安価で冪等な回復可能操作にする。** これが主原則です。
 
 100% の原子性は保証できません。しかし，依存整合性を守る Order A は，多くの失敗モードにおいて厳密にマシです。そしてその差は感覚論ではなく，**参照される親を先に作り，参照する子を後に作る** という，DB のトランザクション設計・参照整合性と同じ原則で明確に説明できます。
 
