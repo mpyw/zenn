@@ -71,7 +71,7 @@ sequenceDiagram
     actor Human as 人間
     participant GH as GitHub
     participant Actions as GitHub Actions
-    participant npm as NPM registry
+    participant npm as NPM Registry
 
     Human->>GH: Release を publish
     GH->>GH: タグと Release を確定
