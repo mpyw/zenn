@@ -16,7 +16,7 @@ GitHub Actions からパッケージを公開するとき，こんなワーク�
 
 操作する側から見ると，非常に分かりやすいですよね。Release を作れば npm にも公開される。GitHub Release を起点として，その後ろにパッケージレジストリへの publish をぶら下げる構成です。
 
-ところが，2025 年に GitHub の **Immutable Releases（イミュータブルリリース）** が登場したことで，この順序は無視できないリスクを抱えるようになりました。2025 年 8 月のパブリックプレビューを経て，2025 年 10 月には一般提供（GA）されています。
+ところが，2025 年に GitHub の **[Immutable Releases（イミュータブルリリース）](https://github.blog/changelog/2025-10-28-immutable-releases-are-now-generally-available/)** が登場したことで，この順序は無視できないリスクを抱えるようになりました。2025 年 8 月のパブリックプレビューを経て，2025 年 10 月には一般提供（GA）されています。
 
 :::message alert
 **イミュータブルなタグ / Release は，「カノニカルなリリース行為が成功した瞬間」に焼け。それより前に焼いてはならない。**
@@ -32,7 +32,7 @@ GitHub Actions からパッケージを公開するとき，こんなワーク�
 
 この記事では，まず従来の定番構成がなぜ Immutable Releases と衝突するのかを確認し，その後で 3 パターンそれぞれの正しい順序を整理します。
 
-**対象読者: GitHub Actions で npm / crates.io / PyPI / RubyGems へパッケージを公開している方，GoReleaser などでバイナリを配布している方，Packagist / Go modules のリリースフローを設計している方**
+**対象読者: GitHub Actions でリリースフローを扱うライブラリやアプリケーションの開発者**
 
 # 従来のパターン：Release 作成をトリガーにする
 
@@ -91,11 +91,10 @@ sequenceDiagram
 publish が失敗する原因はいくらでもあります。
 
 - npm レジストリの障害・レートリミット
-- `NPM_TOKEN` の失効・権限不足
 - `version` が既存のバージョンと重複
 - ネットワークの瞬断
 - テスト・ビルドの失敗
-- 2FA / OIDC の設定ミス
+- MFA / OIDC の設定ミス
 
 たとえば `v1.2.3` の Release を作った後で `npm publish` が失敗したとします。npm には `v1.2.3` が存在しないのに，GitHub にはタグと Release だけが残りました。実態と記録が食い違っています。
 
@@ -115,17 +114,16 @@ gh release create v1.2.3 --generate-notes
 
 # Immutable Release 時代に何が変わったのか
 
-Immutable Releases を有効化すると，公開済み Release のタグとアセットが凍結されます。また，署名付きのリリースアテステーションも自動生成されます。設定はリポジトリ単位または組織単位で有効化できます。
+Immutable Releases を有効化すると，公開済み Release のタグとアセットが凍結されます。設定はリポジトリ単位または組織単位で有効化できます。
 
 ここでは，**何が凍結されて，何が編集できるのか** を正確に切り分けておきましょう。
 
-| 対象 | published 後の扱い |
-|:---|:---|
-| **タグ** | 移動・削除不可 |
-| **アセット（添付ファイル）** | 追加・変更・削除不可 |
-| **リリースアテステーション** | 署名付きで自動生成 |
-| **本文（notes）** | 編集可能 |
-| **タイトル** | 編集可能 |
+| 対象 | 公開後に変更・削除可能か？ |
+|:---|:---:|
+| タグ | ❌️ |
+| アセット | ❌️ |
+| 本文 | ✅️ |
+| タイトル | ✅️ |
 
 :::message
 Immutable Releases が凍結するのは **タグとアセット** です。公開後に誤字を見つけても，Release の本文やタイトルは編集できます。「一度 publish したら説明文まで一文字も触れない」という機能ではありません。
@@ -137,7 +135,7 @@ Immutable Releases が凍結するのは **タグとアセット** です。公�
 **一度 Immutable Release を削除しても，そのタグ名は二度と再利用できません。リポジトリ自体を削除し，同じ名前で作り直しても再利用不可です。**
 :::
 
-これは「リポジトリ復活攻撃（repository resurrection attack）」を防ぐための意図的な仕様です。攻撃者に過去のリリースと同じ名前を再利用させないという意味では，非常に筋が通っています。
+これは「[リポジトリ復活攻撃（repository resurrection attack）](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)」を防ぐための意図的な仕様です。攻撃者に過去のリリースと同じ名前を再利用させないという意味では，非常に筋が通っています。
 
 しかし，リリースフローの設計者にとっては前提がひっくり返ります。`gh release delete v1.2.3 --cleanup-tag` で消しても，`v1.2.3` は新品には戻りません。**一度焼いたタグ名は，もう焼き直せない。** この制約を前提として，取り返しのつかない操作をどの瞬間に置くか考え直さなければなりません。
 
@@ -171,19 +169,19 @@ Immutable Releases が凍結するのは **タグとアセット** です。公�
 ```mermaid
 flowchart TD
     Q1{"配布の本体は<br/>GitHub Release に添付する<br/>ビルド済みバイナリ？"}
-    Q1 -->|Yes| P2["<b>パターン 2：Release 本体型</b><br/>suve / goreleaser 系<br/><br/>tag → Release（binaries）→ レジストリ mirror<br/>gh がアセットを load 後に atomic publish"]
+    Q1 -->|Yes| P2["<b>パターン 2：Release 本体型</b>"]
     Q1 -->|"No（ライブラリ）"| Q2{"レジストリは<br/>何を取り込む？"}
-    Q2 -->|"アーティファクトを upload<br/>npm / crates.io / PyPI / RubyGems"| P1["<b>パターン 1：レジストリ本体型</b><br/><br/>publish → 成功後に Release<br/>Release = publish 成功の記録"]
-    Q2 -->|"Git タグを読むだけ<br/>Packagist / Go modules"| P3["<b>パターン 3：タグ本体型</b><br/><br/>tag = release（別 publish 無し）<br/>タグ作成が唯一の証跡 → トリガー可"]
+    Q2 -->|"アーティファクトを upload<br/>npm / crates.io / PyPI / RubyGems"| P1["<b>パターン 1：レジストリ本体型</b>"]
+    Q2 -->|"Git タグを読むだけ<br/>Packagist / Go modules"| P3["<b>パターン 3：タグ本体型</b>"]
 ```
 
 一覧にすると，以下のようになります。
 
-| # | パターン | 代表レジストリ | カノニカル成果物の在処 | 順序 | タグを焼く瞬間 |
-|:--|:--|:--|:--|:--|:--|
-| 1 | レジストリ本体型 | npm / crates.io / PyPI / RubyGems | レジストリ上の tarball・crate・wheel・gem | publish → Release | publish 成功後 |
-| 2 | Release 本体型 | GitHub Release（+ brew / scoop / npm mirror） | GitHub Release のバイナリ | Release(binaries) → mirror | gh の atomic publish |
-| 3 | タグ本体型 | Packagist / Go modules | Git タグ（＝リポジトリ） | tag = release | タグ push＝リリース |
+| # | パターン | 代表レジストリ | カノニカル成果物の在処 | 順序 |
+|:--|:--|:--|:--|:--|
+| 1 | レジストリ本体型 | <ul><li>npm</li><li>crates.io</li><li>PyPI</li><li>RubyGems</li></ul> | レジストリ上のアセット | レジストリ → GitHub Release |
+| 2 | Release 本体型 | <ul><li>GitHub Release</li><li>Homebrew</li><li>Scoop</li><li>NPM Mirror</li></ul> | GitHub Release 上のアセット | GitHub Release → ミラー |
+| 3 | タグ本体型 | <ul><li>Packagist</li><li>Go modules</li></ul> | Git タグ | タグ = GitHub Release |
 
 「GitHub Release を先に作るな」という標語だけを覚えるのではなく，**カノニカルな成果物が何なのか** を見極めてください。ここからは，各パターンを掘り下げていきます。
 
@@ -213,17 +211,14 @@ flowchart LR
 
 ### GitHub Actions の実装例
 
-npm の Trusted Publishing を使い，`NPM_TOKEN` を置かない構成は次のようになります。
+`workflow_dispatch` を起点に，**publish → tag → Release の順** で単純にステップを並べるだけです。
 
 ```yaml
 # .github/workflows/release.yml
-name: Release
-
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "リリースするバージョン（例: 1.2.3）"
         required: true
         type: string
 
@@ -233,60 +228,27 @@ jobs:
     permissions:
       contents: write
       id-token: write
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-
       - run: npm ci
-      - run: npm test
-      - run: npm run build
 
       # 1. カノニカルな成果物を先に公開する
-      - name: Publish to npm
-        run: npm publish
+      - run: npm publish
 
-      # 2. npm publish が成功した後でのみタグを作る
-      - name: Create and push tag
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
-
-      # 3. GitHub Release は publish 成功の記録
-      - name: Create GitHub Release
-        env:
+      # 2. 成功した後でのみタグと Release を作る
+      - env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
-        run: gh release create "v$VERSION" --generate-notes
+        run: |
+          git tag "v$VERSION" && git push origin "v$VERSION"
+          gh release create "v$VERSION" --generate-notes
 ```
 
-この例の要点は，`npm publish` とタグ作成の間に条件分岐を凝らすことではありません。**単純なステップ順序そのものが安全装置** になっています。`npm publish` が失敗したら，タグ作成にも Release 作成にも到達しません。
-
-:::message
-crates.io 自体もイミュータブルです。公開済み crate を yank することはできても，同じバージョンを上書きすることはできません。
-
-つまり crates.io では，**publish こそ取り返しのつかない行為** です。だからこそ，その成功後に GitHub Release を追従させるという順序が，より強く効いてきます。
-:::
-
-### npm Trusted Publishing と素直に組み合わせる
-
-npm の **Trusted Publishing（OIDC）** は 2025 年 7 月に一般提供（GA）されました。GitHub Actions の OIDC トークンで一時的に認証するため，長期の `NPM_TOKEN` は不要です。さらに **provenance（来歴証明）も自動付与** されます。
-
-必要な権限は `id-token: write` です。先ほどの例でも，ジョブの `permissions` に明示しています。トークンレスで provenance 付き，しかもカノニカルな publish を先に完了させる。Immutable Releases 時代の npm リリースフローと非常に相性が良い構成です。
-
-:::message alert
-npm 側の Trusted Publisher 設定には，**実際に publish ステップを含む再利用ワークフローではなく，起点となったワークフローファイル名を指定してください。**
-
-`workflow_call` で publish を再利用ワークフローへ切り出しても，OIDC クレームに入るのは呼び出し「元」のファイル名です。ここを取り違えると設定が噛み合いません。publish ジョブを独立した `workflow_dispatch` にしておくと，npm 側へ登録するファイルと実際の起点が一致し，設計が素直になります。
-:::
+`npm publish` が失敗すれば後続には到達しません。**単純なステップ順序そのものが安全装置** です。
 
 ## パターン 2：Release 本体型（バイナリツール）
 
@@ -385,7 +347,7 @@ npm への公開は，さらに独立した `release-npm.yml` が担当します
 :::message alert
 npm Trusted Publishing の OIDC クレームは，publish を実行する再利用ワークフローではなく **起点となったワークフロー名** を参照します。
 
-`release-npm.yml` 自身を独立した `workflow_dispatch` にしておけば，npm 側の Trusted Publisher 設定へ登録するファイル名と，OIDC クレーム上の起点が一致します。パターン 1 で説明した注意点を，ワークフロー構造そのもので回避しているわけです。
+`release-npm.yml` 自身を独立した `workflow_dispatch` にしておけば，npm 側の Trusted Publisher 設定へ登録するファイル名と，OIDC クレーム上の起点が一致します。この制約を，ワークフロー構造そのもので回避しているわけです。
 :::
 
 `suve` では，タグ作成，バイナリ入り Release 作成，npm への mirror のどれも，Release 公開イベントへ暗黙的に連鎖させていません。**すべて明示的な `workflow_dispatch` から動かし，カノニカルな成果物を確認して次へ進む。** Release 本体型における責務と順序が，そのままワークフロー分割へ現れています。
@@ -512,11 +474,11 @@ npm に載ったパッケージはゴミではありません。カノニカル�
 一方，従来の順序ではどうでしょうか？
 
 - タグと Release をイミュータブルに焼く。
-- その後で `npm publish` が，バージョン重複・名前ポリシー・2FA・権限剥奪・サイズ制限などの **恒久的な理由** で拒否される。
+- その後で `npm publish` が，バージョン重複・名前ポリシー・MFA・権限剥奪・サイズ制限などの **恒久的な理由** で拒否される。
 - 焼いたタグは戻せず，npm にも成果物を載せられない。
 - バージョンを上げるしかなく，GitHub には **タグの墓標だけが残る**。
 
-こちらは，親である npm パッケージより先に，子である GitHub Release を焼いています。つまり **存在しない親を指すダングリング参照を，先にイミュータブル化している** のです。そのうえ，恒久的に拒否されうる `npm publish` を後ろへ置いているため，失敗特性の面でも最悪の順序になっています。
+こちらは，親である npm パッケージより先に，子である GitHub Release を焼いています。つまり **存在しない親を指すダングリング参照を，先にイミュータブル化している** のです。
 
 ## npm から GitHub Release を復元できる
 
