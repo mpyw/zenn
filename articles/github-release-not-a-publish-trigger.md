@@ -310,7 +310,7 @@ sequenceDiagram
 
 `suve` では役割ごとにワークフローを分離し，すべて `workflow_dispatch` 駆動にしています。`on: release: types: [published]` はどこにも使っていません。
 
-#### `tag.yml`：タグだけを作る
+#### [`tag.yml`](https://github.com/mpyw/suve/blob/main/.github/workflows/tag.yml)：タグだけを作る
 
 `workflow_dispatch` / `workflow_call` の両方に対応しています。
 
@@ -320,7 +320,7 @@ sequenceDiagram
 
 この段階では，まだ Immutable Release は publish されていません。後続のバイナリ作成へ渡す基準点としてタグを用意します。
 
-#### `release.yml`：バイナリ入り Release を作る
+#### [`release.yml`](https://github.com/mpyw/suve/blob/main/.github/workflows/release.yml)：バイナリ入り Release を作る
 
 こちらも `workflow_dispatch` / `workflow_call` の両方に対応しています。
 
@@ -330,13 +330,13 @@ sequenceDiagram
 
 先ほど説明したとおり，アセットのアップロード中は Draft です。すべて載り切った後の publish で初めて，タグとアセットがイミュータブルに焼かれます。
 
-#### `tag_and_release.yml`：`needs` で束ねる
+#### [`tag_and_release.yml`](https://github.com/mpyw/suve/blob/main/.github/workflows/tag_and_release.yml)：`needs` で束ねる
 
 人間が通常起動するのは，`workflow_dispatch` 専用の `tag_and_release.yml` です。このワークフローが `tag.yml` と `release.yml` を `needs` で連結し，タグ作成後に Release 作成を進めます。
 
 役割は分割しつつ，通常操作では正しい順序を 1 本のフローとして実行できる束ね役です。
 
-#### `release-npm.yml`：完成済み Release を NPM へミラーする
+#### [`release-npm.yml`](https://github.com/mpyw/suve/blob/main/.github/workflows/release-npm.yml)：完成済み Release を NPM へミラーする
 
 NPM への公開は，さらに独立した `release-npm.yml` が担当します。
 
