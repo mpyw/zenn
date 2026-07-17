@@ -299,8 +299,6 @@ GitHub Release に全バイナリが揃って publish された時点で，本�
 
 - **パターン 1（NPM 等）**：バージョンは `package.json` に **コミット済み**。`npm publish` はそれを公開するだけで，タグは version から導出する **後付けのラベル** です。だから publish を先にしても困りません。
 - **パターン 2（Go / suve）**：バージョンは **Git タグが定義** します（GoReleaser がタグ名からバイナリへ焼き込む）。ビルド前にタグが必要なので，タグが先になります。
-
-だから `suve` の `tag.yml` は `version` を input で受け取り，NPM 系はタグを `package.json` から導出できるのです。
 :::
 
 ### コラム：`gh release create` は一瞬だけ Draft を経由する
