@@ -432,20 +432,17 @@ Workflow Dispatch から直接公開するだけでなく，ドラフトとし�
 - **先に公開まで確定させ，本文・タイトルだけ後から編集する。** Immutable Releases でも本文・タイトルは編集可能です。筆者はこちらが好みです。
 - **ドラフトで作っておき，加筆・修正して万全の状態にしてから公開する。** 稀にアセットを手動で追加 upload したい場合も，ドラフトが受け皿になります。
 
-ここでは，**provenance と immutability は別物** という切り分けが効いてきます。
+ここで整理しておきたいのは，**「生成過程の保証（Provenance）」と「事後の改竄防止（Immutability）」は別の性質** だということです。NPM と GitHub Release を，この 2 軸で並べてみます。
 
-| 観点 | NPM provenance | GitHub Release Immutability |
+| | NPM | GitHub Release |
 |:--|:--:|:--:|
-| 生成過程の保証（どの workflow / commit が作ったか） | ✅ | ❌ |
-| 事後の置き換え・改竄の防止（公開後に差し替えられないか） | ✅※ | ✅ |
+| 生成過程の保証（Provenance） | ✅ | △（要 `attest-build-provenance`） |
+| 事後の改竄防止（Immutability） | ✅ | ✅ |
 
-※ NPM の事後改竄防止は，同一バージョンを上書きできない「バージョン不変性」が担う別機能です。provenance 署名自体も成果物のハッシュに紐づくため，改竄は検知できます。
+- **NPM** は `npm publish --provenance`（OIDC 前提）で生成過程を証明でき，公開済みバージョンを上書きできないバージョン不変性も備えます。2 軸とも標準で満たせます。
+- **GitHub Release** は Immutable Releases で事後改竄を防げます。ただし **生成過程は標準では保証されません。** Immutable Releases が公開時に付ける attestation は「このバイトは本物」という **真正性** であって，「誰が・どの commit で作ったか」という **生成過程** ではないからです。
 
-NPM provenance は upload を OIDC の特定ワークフローに限定できるからこそ，「これはこの commit / workflow が作った」と署名付きで示せます。つまり，生成過程の保証です。一方，GitHub Release Immutability は公開後にタグ / アセットを凍結するだけで，**生成過程は何も保証しません。**
-
-そもそも GitHub Release には，「ドラフトを経たか」「手動 upload か CI ビルドか」を示す機能がありません。手動 upload でも CI ビルドでも Release 単体では区別できず，**GitHub Release は元々素性を保証していない** のです。
-
-Release バイナリの **生成過程まで** 保証したいなら，Immutability とは別レイヤの Artifact Attestations（`actions/attest-build-provenance`）が担当します。ただし現状は Releases ページに UI バッジが出ず，`gh attestation verify` などによる CLI 検証が中心です。npmjs.com 上でバッジが表示される NPM provenance とは対照的です。
+生成過程まで保証したいなら，Immutability とは別レイヤの **`actions/attest-build-provenance`**（SLSA provenance）を足します。ただし現状は Releases ページに UI バッジが出ず，`gh attestation verify` などによる CLI 検証が中心で，npmjs.com 上でバッジが表示される NPM provenance とは対照的です。
 
 # 3 パターンを貫く原則
 
