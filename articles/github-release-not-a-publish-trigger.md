@@ -332,15 +332,6 @@ sequenceDiagram
 
 つまり，わざわざ手作業で「Draft Release を作る」「アセットを upload する」「Draft を昇格する」という処理を書かなくても，`gh` の標準挙動が **アセット load 後の atomic publish** を実現してくれます。Release 本体型では，これこそが「成功後に焼く」です。
 
-:::message
-パターン 1 とパターン 2 では，`gh release create` を置く位置が逆になります。
-
-- パターン 1：レジストリへの publish が本体なので，`gh release create` はその後。
-- パターン 2：`gh release create <assets>` によるバイナリ入り Release が本体なので，ミラーはその後。
-
-構文ではなく，**何を成功の本体と見なすか** が順序を決めています。
-:::
-
 ### `mpyw/suve` の実際のリリースフロー
 
 `suve` では役割ごとにワークフローを分離し，すべて `workflow_dispatch` 駆動にしています。`on: release: types: [published]` はどこにも使っていません。
