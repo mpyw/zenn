@@ -3,7 +3,8 @@ title: "GitHub Release 作成をパッケージリリースのトリガーにす
 emoji: "🔖"
 type: "tech"
 topics: ["githubactions", "npm", "cicd", "oidc", "release"]
-published: false
+published: true
+publication_name: "yumemi_inc"
 ---
 
 # はじめに

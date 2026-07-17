@@ -51,6 +51,8 @@
 
 ## その他
 
+- **[🔖 GitHub Release 作成をパッケージリリースのトリガーにするな！](https://zenn.dev/yumemi_inc/articles/github-release-not-a-publish-trigger)**
+  &nbsp;[[✍Edit]️](./articles/github-release-not-a-publish-trigger.md)
 - **[Git 感覚で AWS / Google Cloud / Azure のシークレットを管理できる CLI/TUI/GUI ツール「suve」](https://zenn.dev/yumemi_inc/articles/suve-git-like-secret-management)**
   &nbsp;[[✍Edit]️](./articles/suve-git-like-secret-management.md)
 - [❣️ Serverless Framework の Deprecation warning: * is not accessible エラー対処法](https://zenn.dev/mpyw/articles/b41b42b76480ec)
