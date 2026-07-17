@@ -294,6 +294,15 @@ sequenceDiagram
 
 GitHub Release に全バイナリが揃って publish された時点で，本体のリリースは成功です。タグを焼くべきなのも，この瞬間になります。その後の NPM / Homebrew / Scoop への反映は，完成済みのカノニカルな成果物を横へ運ぶ工程です。
 
+:::message
+パターン 1 とパターン 2 で順序が逆になるのは，**バージョンの source-of-truth** がどこにあるかの違いでもあります。
+
+- **パターン 1（NPM 等）**：バージョンは `package.json` に **コミット済み**。`npm publish` はそれを公開するだけで，タグは version から導出する **後付けのラベル** です。だから publish を先にしても困りません。
+- **パターン 2（Go / suve）**：バージョンは **Git タグが定義** します（GoReleaser がタグ名からバイナリへ焼き込む）。ビルド前にタグが必要なので，タグが先になります。
+
+だから `suve` の `tag.yml` は `version` を input で受け取り，NPM 系はタグを `package.json` から導出できるのです。
+:::
+
 ### コラム：`gh release create` は一瞬だけ Draft を経由する
 
 ここで，「でも `gh release create` にアセットを渡したら，アップロード完了前に空の Release が publish されるのでは？」と不安になりませんか？
