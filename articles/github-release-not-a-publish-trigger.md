@@ -537,16 +537,12 @@ NPM に載ったパッケージはゴミではありません。カノニカル�
 
 # まとめ
 
-- GitHub の Immutable Releases は 2025 年 8 月にパブリックプレビュー，2025 年 10 月に GA され，公開済み Release の **タグとアセット** を凍結する
-- **Release の本文とタイトルは published 後でも編集可能** であり，凍結対象とは明確に切り分ける必要がある
-- 一度 Release を削除してもタグ名は二度と再利用できず，リポジトリを作り直しても戻らない
-- `on: release: types: [published]` の後で `npm publish` する構成は，失敗時にバージョン番号を 1 つ焼き払う
-- NPM / crates.io / PyPI / RubyGems では，**レジストリへの publish を先に成功させ，その後でタグと Release を作れ**
-- バイナリツールでは，**`gh release create <assets>` が全アセットを Draft 中に upload し，最後に atomic publish する挙動** を活かせ
-- Packagist / Go modules ではタグ作成そのものがリリースなので，タグ push をトリガーにしてよい
-- NPM Trusted Publishing は長期の `NPM_TOKEN` を不要にし，provenance を自動付与する。ただし **NPM 側には起点ワークフローファイル名を設定せよ**
-- **カノニカルな成果物＝依存の中心を先に作り，それに依存する記録・派生物を後に作れば，ダングリング参照を防げる**
-- **イミュータブルなタグ / Release は，カノニカルなリリース行為が成功した瞬間に焼け。それより前に焼くな**
+- **`on: release: [published]` を publish のトリガーにするな。** Immutable Releases 時代は，失敗するとタグが焼かれ，バージョン番号を 1 つ無駄にする
+- **依存の中心（独立した成果物）を先に作り，それに依存する記録は後に作れ。** ダングリング参照を一瞬も作らない
+- パターン 1（NPM / crates.io / PyPI / RubyGems）：**publish → タグ / Release**
+- パターン 2（バイナリツール）：**Release(binaries) → 各レジストリへミラー**
+- パターン 3（Packagist / Go modules）：**タグ push ＝ リリース**（唯一トリガー化してよい）
+- **イミュータブルなタグ / Release は，カノニカルなリリース行為が成功した瞬間にだけ焼け**
 
 # 参考リンク
 
