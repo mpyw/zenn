@@ -199,12 +199,18 @@ NPM / crates.io / PyPI / RubyGems では，レジストリが tarball・crate・
 正しい順序は，次のとおりです。
 
 ```mermaid
-flowchart LR
-    A[workflow_dispatch] --> B[test / build]
-    B --> C[registry へ publish]
-    C -->|成功| D[tag を push]
-    D --> E[GitHub Release を publish]
-    C -->|失敗| F[タグも Release も作らない]
+sequenceDiagram
+    actor Human as 人間
+    participant Actions as GitHub Actions
+    participant Reg as レジストリ
+    participant GH as GitHub
+
+    Human->>Actions: workflow_dispatch で起動
+    Actions->>Actions: test / build
+    Actions->>Reg: publish（カノニカルな成果物）
+    Reg-->>Actions: 成功（失敗すればここで停止）
+    Actions->>GH: tag を push
+    Actions->>GH: GitHub Release を作成（記録）
 ```
 
 `workflow_dispatch` から起動し，まず publish する。成功した場合に限ってタグを push し，GitHub Release を作ります。publish が失敗すれば後続ステップは実行されないため，同じバージョンで何度でもやり直せます。**イミュータブルなタグを焼くのは，レジストリ上にカノニカルな成果物が存在した後だけ** です。
@@ -263,6 +269,21 @@ https://zenn.dev/yumemi_inc/articles/suve-git-like-secret-management
 すると，カノニカルな成功地点もパターン 1 とは変わります。
 
 > **tag → GitHub Release（binaries）→ 各レジストリへミラー**
+
+```mermaid
+sequenceDiagram
+    actor Human as 人間
+    participant Actions as GitHub Actions
+    participant GH as GitHub Release
+    participant Mirror as ミラー
+
+    Human->>Actions: workflow_dispatch で起動
+    Actions->>Actions: tag を作成
+    Actions->>Actions: バイナリをビルド
+    Actions->>GH: アセットを添付して publish（カノニカルな成果物）
+    GH-->>Actions: 成功
+    Actions->>Mirror: NPM / Homebrew / Scoop へ再配布
+```
 
 GitHub Release に全バイナリが揃って publish された時点で，本体のリリースは成功です。タグを焼くべきなのも，この瞬間になります。その後の NPM / Homebrew / Scoop への反映は，完成済みのカノニカルな成果物を横へ運ぶ工程です。
 
@@ -367,6 +388,17 @@ Packagist は GitHub の Webhook を受けると，リポジトリの Git タグ
 > **タグを打つこと**
 > ＝
 > **リリースすること**
+
+```mermaid
+sequenceDiagram
+    actor Human as 人間
+    participant GH as GitHub
+    participant Reg as Packagist / Go modules
+
+    Human->>GH: タグを push（＝リリース）
+    Reg->>GH: タグを読み取り（Webhook or on-demand）
+    Note over GH,Reg: 別途アップロードする成果物は無い
+```
 
 タグ作成の後ろに，失敗しうる別の publish 工程がありません。記録すべき事実であるリリースと，その記録であるタグが同時に生まれるため，順序がズレようもないのです。
 
