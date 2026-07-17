@@ -254,6 +254,10 @@ jobs:
 
 次は，コンパイル済みバイナリを GitHub Release のアセットとして配るツールです。私が開発している `mpyw/suve` も，このパターンに該当します。
 
+https://github.com/mpyw/suve
+
+https://zenn.dev/yumemi_inc/articles/suve-git-like-secret-management
+
 ここでは GitHub Release に添付された darwin / linux / windows 向けバイナリこそが配布の本体です。NPM / Homebrew / Scoop は，Release のアーカイブをダウンロードして再パッケージする二次的なミラーにすぎません。そこでビルドし直すわけではありません。
 
 すると，カノニカルな成功地点もパターン 1 とは変わります。
