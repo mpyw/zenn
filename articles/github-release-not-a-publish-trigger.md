@@ -214,7 +214,7 @@ sequenceDiagram
     Actions->>GH: GitHub Release を作成（記録）
 ```
 
-`workflow_dispatch` から起動し，まず publish する。成功した場合に限ってタグを push し，GitHub Release を作ります。publish が失敗すれば後続ステップは実行されないため，同じバージョンで何度でもやり直せます。**イミュータブルなタグを焼くのは，レジストリ上にカノニカルな成果物が存在した後だけ** です。
+`workflow_dispatch` から起動し，まず publish する。成功した場合に限ってタグと GitHub Release を作ります。publish が失敗すれば後続ステップは実行されないため，同じバージョンで何度でもやり直せます。**イミュータブルなタグを焼くのは，レジストリ上にカノニカルな成果物が存在した後だけ** です。
 
 ### GitHub Actions の実装例
 
@@ -224,10 +224,6 @@ sequenceDiagram
 # .github/workflows/release.yml
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        required: true
-        type: string
 
 jobs:
   release:
@@ -243,16 +239,15 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci
 
-      # 1. カノニカルな成果物を先に公開する
+      # 1. カノニカルな成果物を先に公開する（バージョンは package.json の値）
       - run: npm publish
 
-      # 2. 成功した後でのみタグと Release を作る
+      # 2. 成功した後でのみタグと Release を作る（バージョンは package.json から導出）
       - env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
         run: |
-          git tag "v$VERSION" && git push origin "v$VERSION"
-          gh release create "v$VERSION" --generate-notes
+          VERSION="v$(node -p "require('./package.json').version")"
+          gh release create "$VERSION" --target "$GITHUB_SHA" --generate-notes
 ```
 
 `npm publish` が失敗すれば後続には到達しません。**単純なステップ順序そのものが安全装置** です。
