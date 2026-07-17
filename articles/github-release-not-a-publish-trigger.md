@@ -394,9 +394,12 @@ sequenceDiagram
     actor Human as 人間
     participant GH as GitHub
     participant Reg as Packagist / Go modules
+    actor User as 他のユーザー
 
     Human->>GH: タグを push（＝リリース）
-    Reg->>GH: タグを読み取り（Webhook or on-demand）
+    User->>Reg: composer require / go get
+    Reg->>GH: タグを読み取って取得（Webhook or on-demand）
+    Reg-->>User: パッケージを配信
     Note over GH,Reg: 別途アップロードする成果物は無い
 ```
 
