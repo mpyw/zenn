@@ -14,14 +14,14 @@ GitHub Actions からパッケージを公開するとき，こんなワーク�
 > → `on: release: types: [published]` でワークフローが起動する
 > → `npm publish` が走る
 
-操作する側から見ると，非常に分かりやすいですよね。Release を作れば npm にも公開される。GitHub Release を起点として，その後ろにパッケージレジストリへの publish をぶら下げる構成です。
+操作する側から見ると，非常に分かりやすいですよね。Release を作れば NPM にも公開される。GitHub Release を起点として，その後ろにパッケージレジストリへの publish をぶら下げる構成です。
 
 ところが，2025 年に GitHub の **[Immutable Releases（イミュータブルリリース）](https://github.blog/changelog/2025-10-28-immutable-releases-are-now-generally-available/)** が登場したことで，この順序は無視できないリスクを抱えるようになりました。2025 年 8 月のパブリックプレビューを経て，2025 年 10 月には一般提供（GA）されています。
 
 :::message alert
 **イミュータブルなタグ / Release は，「カノニカルなリリース行為が成功した瞬間」に焼け。それより前に焼いてはならない。**
 
-とくに npm / crates.io / PyPI / RubyGems のようにレジストリへ成果物をアップロードするライブラリでは，**GitHub Release 作成を publish のトリガーにするな！先に publish を成功させてから，タグと Release を確定せよ。**
+とくに NPM / crates.io / PyPI / RubyGems のようにレジストリへ成果物をアップロードするライブラリでは，**GitHub Release 作成を publish のトリガーにするな！先に publish を成功させてから，タグと Release を確定せよ。**
 :::
 
 ただし，何でもかんでも「publish → Release」にすればいいわけではありません。正しい順序は，**カノニカル（正典）な成果物がどこに在るか** によって 3 パターンに分かれます。
@@ -70,7 +70,7 @@ sequenceDiagram
     actor Human as 人間
     participant GH as GitHub
     participant Actions as GitHub Actions
-    participant npm as npm registry
+    participant npm as NPM registry
 
     Human->>GH: Release を publish
     GH->>GH: タグと Release を確定
@@ -90,13 +90,13 @@ sequenceDiagram
 
 publish が失敗する原因はいくらでもあります。
 
-- npm レジストリの障害・レートリミット
+- NPM レジストリの障害・レートリミット
 - `version` が既存のバージョンと重複
 - ネットワークの瞬断
 - テスト・ビルドの失敗
 - MFA / OIDC の設定ミス
 
-たとえば `v1.2.3` の Release を作った後で `npm publish` が失敗したとします。npm には `v1.2.3` が存在しないのに，GitHub にはタグと Release だけが残りました。実態と記録が食い違っています。
+たとえば `v1.2.3` の Release を作った後で `npm publish` が失敗したとします。NPM には `v1.2.3` が存在しないのに，GitHub にはタグと Release だけが残りました。実態と記録が食い違っています。
 
 しかし，これまでは次のように戻せました。
 
@@ -146,15 +146,15 @@ Immutable Releases が凍結するのは **タグとアセット** です。公�
 1. `v1.2.3` の Release を publish する。
 2. タグ `v1.2.3` と Release がイミュータブルに焼かれる。
 3. `release.published` を受けて GitHub Actions が起動する。
-4. `npm publish` が npm レジストリの障害で失敗する。
-5. npm には `v1.2.3` が存在しない一方で，GitHub には `v1.2.3` のタグと Release が残る。
+4. `npm publish` が NPM レジストリの障害で失敗する。
+5. NPM には `v1.2.3` が存在しない一方で，GitHub には `v1.2.3` のタグと Release が残る。
 
 ここで原因が一時的な障害だったとしても，もう同じ手順をやり直せません。
 
 - Release を削除して `v1.2.3` を作り直す → **タグ名を再利用できない**
 - タグを削除してもう一度 push する → **タグを削除できない**
 - アセットや別の成果物を後から補う → **アセットを追加・変更できない**
-- `v1.2.4` に進む → npm に何も公開していないのに，`v1.2.3` が永久欠番になる
+- `v1.2.4` に進む → NPM に何も公開していないのに，`v1.2.3` が永久欠番になる
 
 **publish に失敗しただけなのに，バージョン番号を 1 つ焼き払う。** これはレジストリ障害へのペナルティとして，あまりにも重すぎます。
 
@@ -171,7 +171,7 @@ flowchart TD
     Q1{"配布の本体は<br/>GitHub Release に添付する<br/>ビルド済みバイナリ？"}
     Q1 -->|Yes| P2["<b>パターン 2：Release 本体型</b>"]
     Q1 -->|"No（ライブラリ）"| Q2{"レジストリは<br/>何を取り込む？"}
-    Q2 -->|"アーティファクトを upload<br/>npm / crates.io / PyPI / RubyGems"| P1["<b>パターン 1：レジストリ本体型</b>"]
+    Q2 -->|"アーティファクトを upload<br/>NPM / crates.io / PyPI / RubyGems"| P1["<b>パターン 1：レジストリ本体型</b>"]
     Q2 -->|"Git タグを読むだけ<br/>Packagist / Go modules"| P3["<b>パターン 3：タグ本体型</b>"]
 ```
 
@@ -179,17 +179,17 @@ flowchart TD
 
 | # | パターン | 代表レジストリ | カノニカル成果物の在処 | 順序 |
 |:--|:--|:--|:--|:--|
-| 1 | レジストリ本体型 | <ul><li>npm</li><li>crates.io</li><li>PyPI</li><li>RubyGems</li></ul> | レジストリ上のアセット | レジストリ → GitHub Release |
-| 2 | Release 本体型 | <ul><li>GitHub Release</li><li>Homebrew</li><li>Scoop</li><li>NPM Mirror</li></ul> | GitHub Release 上のアセット | GitHub Release → ミラー |
-| 3 | タグ本体型 | <ul><li>Packagist</li><li>Go modules</li></ul> | Git タグ | タグ = GitHub Release |
+| 1 | レジストリ本体型 | NPM<br>crates.io<br>PyPI<br>RubyGems | レジストリ上のアセット | レジストリ → GitHub Release |
+| 2 | Release 本体型 | GitHub Release<br>Homebrew<br>Scoop<br>NPM ミラー | GitHub Release 上のアセット | GitHub Release → ミラー |
+| 3 | タグ本体型 | Packagist<br>Go modules | Git タグ | タグ = GitHub Release |
 
 「GitHub Release を先に作るな」という標語だけを覚えるのではなく，**カノニカルな成果物が何なのか** を見極めてください。ここからは，各パターンを掘り下げていきます。
 
-## パターン 1：レジストリ本体型（npm / crates.io / PyPI / RubyGems）
+## パターン 1：レジストリ本体型（NPM / crates.io / PyPI / RubyGems）
 
-npm / crates.io / PyPI / RubyGems では，レジストリが tarball・crate・wheel・gem という成果物の本体をホストします。
+NPM / crates.io / PyPI / RubyGems では，レジストリが tarball・crate・wheel・gem という成果物の本体をホストします。
 
-- npm なら `npm publish`
+- NPM なら `npm publish`
 - crates.io なら `cargo publish`
 - PyPI なら `twine upload`
 - RubyGems なら `gem push`
@@ -254,13 +254,13 @@ jobs:
 
 次は，コンパイル済みバイナリを GitHub Release のアセットとして配るツールです。私が開発している `mpyw/suve` も，このパターンに該当します。
 
-ここでは GitHub Release に添付された darwin / linux / windows 向けバイナリこそが配布の本体です。npm / Homebrew / Scoop は，Release のアーカイブをダウンロードして再パッケージする二次的なミラーにすぎません。そこでビルドし直すわけではありません。
+ここでは GitHub Release に添付された darwin / linux / windows 向けバイナリこそが配布の本体です。NPM / Homebrew / Scoop は，Release のアーカイブをダウンロードして再パッケージする二次的なミラーにすぎません。そこでビルドし直すわけではありません。
 
 すると，カノニカルな成功地点もパターン 1 とは変わります。
 
-> **tag → GitHub Release（binaries）→ 各レジストリへ mirror**
+> **tag → GitHub Release（binaries）→ 各レジストリへミラー**
 
-GitHub Release に全バイナリが揃って publish された時点で，本体のリリースは成功です。タグを焼くべきなのも，この瞬間になります。その後の npm / Homebrew / Scoop への反映は，完成済みのカノニカルな成果物を横へ運ぶ工程です。
+GitHub Release に全バイナリが揃って publish された時点で，本体のリリースは成功です。タグを焼くべきなのも，この瞬間になります。その後の NPM / Homebrew / Scoop への反映は，完成済みのカノニカルな成果物を横へ運ぶ工程です。
 
 ### コラム：`gh release create` は一瞬だけ Draft を経由する
 
@@ -297,7 +297,7 @@ sequenceDiagram
 パターン 1 とパターン 2 では，`gh release create` を置く位置が逆になります。
 
 - パターン 1：レジストリへの publish が本体なので，`gh release create` はその後。
-- パターン 2：`gh release create <assets>` によるバイナリ入り Release が本体なので，mirror はその後。
+- パターン 2：`gh release create <assets>` によるバイナリ入り Release が本体なので，ミラーはその後。
 
 構文ではなく，**何を成功の本体と見なすか** が順序を決めています。
 :::
@@ -332,31 +332,31 @@ sequenceDiagram
 
 役割は分割しつつ，通常操作では正しい順序を 1 本のフローとして実行できる束ね役です。
 
-#### `release-npm.yml`：完成済み Release を npm へ mirror する
+#### `release-npm.yml`：完成済み Release を NPM へミラーする
 
-npm への公開は，さらに独立した `release-npm.yml` が担当します。
+NPM への公開は，さらに独立した `release-npm.yml` が担当します。
 
 1. 対象の GitHub Release が存在することを確認する。
 2. `gh release download` で Release のアーカイブを取得する。
 3. OIDC の Trusted Publishing で `npm publish` する。
 
-ここで npm 用パッケージをゼロからビルドし直すのではなく，**カノニカルな GitHub Release のアーカイブを取得して再パッケージ** します。そのため npm は二次的なミラーという位置付けです。認証はトークンレスで，provenance も自動付与されます。
+ここで NPM 用パッケージをゼロからビルドし直すのではなく，**カノニカルな GitHub Release のアーカイブを取得して再パッケージ** します。そのため NPM は二次的なミラーという位置付けです。認証はトークンレスで，provenance も自動付与されます。
 
 そして `release-npm.yml` は，あえて `workflow_call` に対応させず **`workflow_dispatch` 専用** にしています。これは単なる好みではありません。
 
 :::message alert
-npm Trusted Publishing の OIDC クレームは，publish を実行する再利用ワークフローではなく **起点となったワークフロー名** を参照します。
+NPM Trusted Publishing の OIDC クレームは，publish を実行する再利用ワークフローではなく **起点となったワークフロー名** を参照します。
 
-`release-npm.yml` 自身を独立した `workflow_dispatch` にしておけば，npm 側の Trusted Publisher 設定へ登録するファイル名と，OIDC クレーム上の起点が一致します。この制約を，ワークフロー構造そのもので回避しているわけです。
+`release-npm.yml` 自身を独立した `workflow_dispatch` にしておけば，NPM 側の Trusted Publisher 設定へ登録するファイル名と，OIDC クレーム上の起点が一致します。この制約を，ワークフロー構造そのもので回避しているわけです。
 :::
 
-`suve` では，タグ作成，バイナリ入り Release 作成，npm への mirror のどれも，Release 公開イベントへ暗黙的に連鎖させていません。**すべて明示的な `workflow_dispatch` から動かし，カノニカルな成果物を確認して次へ進む。** Release 本体型における責務と順序が，そのままワークフロー分割へ現れています。
+`suve` では，タグ作成，バイナリ入り Release 作成，NPM へのミラーのどれも，Release 公開イベントへ暗黙的に連鎖させていません。**すべて明示的な `workflow_dispatch` から動かし，カノニカルな成果物を確認して次へ進む。** Release 本体型における責務と順序が，そのままワークフロー分割へ現れています。
 
 ## パターン 3：タグ本体型（Packagist / Go modules）
 
 最後は，そもそもアップロードすべき別の成果物が存在しないパターンです。
 
-Packagist は GitHub の Webhook を受けると，リポジトリの Git タグを読み，`composer.json` を index します。Go modules も `proxy.golang.org` がタグを見て on-demand に取得します。npm の tarball や PyPI の wheel のような成果物を，開発者が別途 upload する工程はありません。
+Packagist は GitHub の Webhook を受けると，リポジトリの Git タグを読み，`composer.json` を index します。Go modules も `proxy.golang.org` がタグを見て on-demand に取得します。NPM の tarball や PyPI の wheel のような成果物を，開発者が別途 upload する工程はありません。
 
 つまり，この世界では次の 2 つが同義です。
 
@@ -398,7 +398,7 @@ Packagist は GitHub の Webhook を受けると，リポジトリの Git タグ
 
 タイトルの「GitHub Release 作成をパッケージリリースのトリガーにするな！」は，とくにパターン 1 とパターン 2 への戒めです。
 
-パターン 1 では，Release を作った後にレジストリ publish を賭けてはいけません。パターン 2 でも，空または不完全な Release を先に公開して，その後からアセットや mirror の成否を祈ってはいけません。`gh release create <assets>` の Draft 経由を使い，完成したバイナリ入り Release を一度だけ publish してください。
+パターン 1 では，Release を作った後にレジストリ publish を賭けてはいけません。パターン 2 でも，空または不完全な Release を先に公開して，その後からアセットやミラーの成否を祈ってはいけません。`gh release create <assets>` の Draft 経由を使い，完成したバイナリ入り Release を一度だけ publish してください。
 
 一方でパターン 3 は，タグ作成が唯一のリリース行為です。そこではタグがトリガーになっても，カノニカルな事実と記録の順序は逆転しません。
 
@@ -408,17 +408,17 @@ Packagist は GitHub の Webhook を受けると，リポジトリの Git タグ
 
 ここまで読んで，こんな反論を思い浮かべた方もいるのではないでしょうか？
 
-> `npm publish` を先に実行しても，その後の GitHub Release 作成が失敗したら，今度は npm にだけパッケージが残りますよね？結局，ゴミデータが残る場所が GitHub から npm へ入れ替わるだけでは？
+> `npm publish` を先に実行しても，その後の GitHub Release 作成が失敗したら，今度は NPM にだけパッケージが残りますよね？結局，ゴミデータが残る場所が GitHub から NPM へ入れ替わるだけでは？
 >
-> npm も GitHub もイミュータブルなら，どちらの順序でもリリース途中に失敗したらバージョンを上げるしかないのでは？
+> NPM も GitHub もイミュータブルなら，どちらの順序でもリリース途中に失敗したらバージョンを上げるしかないのでは？
 
 鋭い指摘です。まず，この反論が正しい部分から認めましょう。
 
 ## これは分散コミット問題である
 
-npm レジストリと GitHub は，互いに独立した 2 つのイミュータブルなストアです。両方へまたがる一連の操作は，データベースでいう **2 相コミット（2PC）** と同型の問題を抱えています。片方のコミットに成功しても，もう片方のコミットが失敗する可能性を消せません。
+NPM レジストリと GitHub は，互いに独立した 2 つのイミュータブルなストアです。両方へまたがる一連の操作は，データベースでいう **2 相コミット（2PC）** と同型の問題を抱えています。片方のコミットに成功しても，もう片方のコミットが失敗する可能性を消せません。
 
-そして npm と GitHub の間には，両方を 1 トランザクションとして確定・ロールバックしてくれるコーディネータが居ません。したがって，**2 系統をまたぐ完全な原子性は原理的に達成できない。** この点において，先ほどの反論は正しいです。
+そして NPM と GitHub の間には，両方を 1 トランザクションとして確定・ロールバックしてくれるコーディネータが居ません。したがって，**2 系統をまたぐ完全な原子性は原理的に達成できない。** この点において，先ほどの反論は正しいです。
 
 しかし，ここから「ならばゴミの場所が対称に入れ替わるだけ」と結論付けるのは早計です。2 つの不整合状態は，依存関係の向きから見るとまったく対称ではありません。
 
@@ -426,12 +426,12 @@ npm レジストリと GitHub は，互いに独立した 2 つのイミュー�
 
 まず，`npm publish` と GitHub Release の間で起こりうる 2 つの状態を並べてみましょう。
 
-- **A：GitHub Release はあるが，npm には無い**
+- **A：GitHub Release はあるが，NPM には無い**
   - Release が存在しないバージョンを指しています。これは参照先を失った **ダングリング参照** であり，利用者に対する壊れた約束です。
-- **B：npm にはあるが，GitHub Release が無い**
+- **B：NPM にはあるが，GitHub Release が無い**
   - 本物のパッケージは既に存在します。成功記録がまだ生成されていないだけの，**良性の未完成状態** です。
 
-npm ライブラリにおける依存の向きは，**GitHub Release → npm パッケージ** です。GitHub Release は `npm publish` 成功の記録であり，それ自体で独立して成立するのは npm パッケージ側です。したがって A と B は，ゴミの置き場所を交換しただけの状態ではありません。
+NPM ライブラリにおける依存の向きは，**GitHub Release → NPM パッケージ** です。GitHub Release は `npm publish` 成功の記録であり，それ自体で独立して成立するのは NPM パッケージ側です。したがって A と B は，ゴミの置き場所を交換しただけの状態ではありません。
 
 データベースの外部キーを考えてみてください。参照される親行を先に insert し，参照する子行を後から insert しますよね？これは，存在しない親を指すダングリング参照を一瞬たりとも作らないためです。リリースでも同じです。
 
@@ -444,17 +444,17 @@ npm ライブラリにおける依存の向きは，**GitHub Release → npm パ
 
 パターン 1 では，独立した側である `npm publish` が，たまたま恒久的に拒否されうる高分散な操作でもあります。そのため先頭へ置けば，失敗しても何も焼けておらずコストがタダになる，という追加のメリットがあります。
 
-一方でパターン 2 では，カノニカルな `gh release create` こそ独立して成立する側であり，拒否されうる npm mirror はそれに依存する派生物として後回しです。「拒否されうる操作を先に置け」というヒューリスティックでは，ここで順序を誤ります。**依存の中心を先に作る** と考えれば，3 パターンすべてを同じ原則で説明できます。
+一方でパターン 2 では，カノニカルな `gh release create` こそ独立して成立する側であり，拒否されうる NPM ミラーはそれに依存する派生物として後回しです。「拒否されうる操作を先に置け」というヒューリスティックでは，ここで順序を誤ります。**依存の中心を先に作る** と考えれば，3 パターンすべてを同じ原則で説明できます。
 :::
 
-npm ライブラリでこの依存関係を表に落とすと，位置が一意に決まることが分かります。
+NPM ライブラリでこの依存関係を表に落とすと，位置が一意に決まることが分かります。
 
 | 操作 | 依存関係における役割 | 位置 |
 |:---|:---|:---|
 | `npm publish` | 独立して成立する成果物（参照される **親**） | **先に作る** |
 | `git tag` / `gh release create` | `npm publish` を指す記録（参照する **子**） | **後に作る** |
 
-親である npm パッケージを先に，子である GitHub Release を後に作る。これだけで，途中で失敗しても行き着く先は，存在しない成果物を指さない良性の状態 B に限定されます。この順序が失敗時に具体的にどう効くのか，2 つの順序を並べて見てみましょう。
+親である NPM パッケージを先に，子である GitHub Release を後に作る。これだけで，途中で失敗しても行き着く先は，存在しない成果物を指さない良性の状態 B に限定されます。この順序が失敗時に具体的にどう効くのか，2 つの順序を並べて見てみましょう。
 
 ### Order A：`npm publish` → tag → Release
 
@@ -463,11 +463,11 @@ npm ライブラリでこの依存関係を表に落とすと，位置が一意�
 - `npm publish` が失敗した場合
   - まだタグも Release も焼けていません。同じバージョンで再実行できるため，バージョンの bump は不要です。
 - `npm publish` が成功し，tag / Release 作成でコケた場合
-  - npm には正しい成果物が存在します。tag と Release を冪等に再実行して追いつかせればよいため，やはり bump は不要です。
+  - NPM には正しい成果物が存在します。tag と Release を冪等に再実行して追いつかせればよいため，やはり bump は不要です。
 
-この順序は，参照される親である npm パッケージを先に作り，参照する子である GitHub Release を後に作っています。依存整合性を保ったまま，不可逆な一点を **`npm publish` の成功だけ** に絞れます。それ以降は，安く再実行でき，いつか必ず完了させられるメタデータ操作しか残りません。
+この順序は，参照される親である NPM パッケージを先に作り，参照する子である GitHub Release を後に作っています。依存整合性を保ったまま，不可逆な一点を **`npm publish` の成功だけ** に絞れます。それ以降は，安く再実行でき，いつか必ず完了させられるメタデータ操作しか残りません。
 
-npm に載ったパッケージはゴミではありません。カノニカルなリリース行為に成功して得られた，**本物の成果物** です。GitHub 側の記録が一時的に遅れているだけなので，後から追いつかせれば収束します。
+NPM に載ったパッケージはゴミではありません。カノニカルなリリース行為に成功して得られた，**本物の成果物** です。GitHub 側の記録が一時的に遅れているだけなので，後から追いつかせれば収束します。
 
 ### Order B：Release でタグを焼く → `npm publish`
 
@@ -475,20 +475,20 @@ npm に載ったパッケージはゴミではありません。カノニカル�
 
 - タグと Release をイミュータブルに焼く。
 - その後で `npm publish` が，バージョン重複・名前ポリシー・MFA・権限剥奪・サイズ制限などの **恒久的な理由** で拒否される。
-- 焼いたタグは戻せず，npm にも成果物を載せられない。
+- 焼いたタグは戻せず，NPM にも成果物を載せられない。
 - バージョンを上げるしかなく，GitHub には **タグの墓標だけが残る**。
 
-こちらは，親である npm パッケージより先に，子である GitHub Release を焼いています。つまり **存在しない親を指すダングリング参照を，先にイミュータブル化している** のです。
+こちらは，親である NPM パッケージより先に，子である GitHub Release を焼いています。つまり **存在しない親を指すダングリング参照を，先にイミュータブル化している** のです。
 
-## npm から GitHub Release を復元できる
+## NPM から GitHub Release を復元できる
 
-Order A の決め手は，単に「GitHub のほうが後から直しやすそう」という感覚論ではありません。**npm から GitHub Release を復元する，冪等な回復アクションを実際に書ける** ことです。
+Order A の決め手は，単に「GitHub のほうが後から直しやすそう」という感覚論ではありません。**NPM から GitHub Release を復元する，冪等な回復アクションを実際に書ける** ことです。
 
 設計の肝は 3 つあります。
 
 1. **カノニカルな成果物の存在を先に検証する**
-   - npm にそのバージョンが本当に存在すると確認できた場合にしか，Release を作りません。「GitHub に記録だけがあり，npm には成果物が無い」という逆向きの不整合を再発させない安全弁です。
-2. **タグを打つ commit を npm 自身から復元する**
+   - NPM にそのバージョンが本当に存在すると確認できた場合にしか，Release を作りません。「GitHub に記録だけがあり，NPM には成果物が無い」という逆向きの不整合を再発させない安全弁です。
+2. **タグを打つ commit を NPM 自身から復元する**
    - 手軽な方法なら，`npm view <pkg>@<ver> gitHead` から publish 時の HEAD の SHA を取得できます。
    - より堅牢に復元するなら，provenance の SLSA predicate に署名付きで記録されたソース commit を使えます。OIDC Trusted Publishing では provenance が自動付与されるため，**OIDC で publish していたおかげで，回復まで「正典」にできる** わけです。記事前半で説明した provenance が，ここで効いてきます。
 3. **すべてを冪等にする**
@@ -569,11 +569,11 @@ jobs:
 この例では `git tag` ステップを別に書いていません。`gh release create --target <sha>` は，タグが存在しなければ指定した commit にタグを生成するため，tag と Release の回復を 1 本にまとめられます。既に Release が存在すれば何もしないので，失敗後に何度起動しても安全です。
 
 :::message alert
-**Order A では，この回復アクションが「npm には載ったが Release が無い」という状態を，ワンボタンで前へ収束させます。** さらに堅牢な運用では，回復元の SHA を npm パッケージ自身の署名付き provenance に基づいて確定できます。カノニカルなソース commit から GitHub 側を復元するため，回復経路へ別の commit を紛れ込ませる余地がありません。**OIDC で publish していたおかげで，回復まで「正典」になる** のです。
+**Order A では，この回復アクションが「NPM には載ったが Release が無い」という状態を，ワンボタンで前へ収束させます。** さらに堅牢な運用では，回復元の SHA を NPM パッケージ自身の署名付き provenance に基づいて確定できます。カノニカルなソース commit から GitHub 側を復元するため，回復経路へ別の commit を紛れ込ませる余地がありません。**OIDC で publish していたおかげで，回復まで「正典」になる** のです。
 
-**Order B では，そもそも同じ回復アクションを書きようがありません。** npm から恒久的に publish を拒否されたなら，先に焼いたタグの墓標を消す手段が存在しないからです。
+**Order B では，そもそも同じ回復アクションを書きようがありません。** NPM から恒久的に publish を拒否されたなら，先に焼いたタグの墓標を消す手段が存在しないからです。
 
-参照整合性の言葉に直すと，この回復アクションは npm という親の `gitHead` / provenance を読み，GitHub Release という子を再構築しています。**子は親のビューとして再生成できますが，親は子から導出できません。** 焼いたタグという子の墓標から，拒否された `npm publish` という親を作り出すことは原理的に不可能です。
+参照整合性の言葉に直すと，この回復アクションは NPM という親の `gitHead` / provenance を読み，GitHub Release という子を再構築しています。**子は親のビューとして再生成できますが，親は子から導出できません。** 焼いたタグという子の墓標から，拒否された `npm publish` という親を作り出すことは原理的に不可能です。
 
 したがって，**「回復アクションが書けるかどうか」自体が，2 つの順序にある非対称性の証明** になっています。Order A でだけ回復アクションを書けるのは，親から子を作る正しい依存方向を守っているからです。
 :::
@@ -590,7 +590,7 @@ jobs:
 
 記事のパターン 2 で説明した `gh release create` も，まさに同じ構造を持っています。失敗しやすいアセットアップロードを Draft 中に済ませ，全アセットが揃った最後の一瞬だけ atomic publish する。これは **検証と失敗可能な処理を `COMMIT` より前へ寄せる** という，まったく同じ原則です。
 
-**依存の中心（独立した側）を先に作り，それに依存する記録を，後続の安価で冪等な回復可能操作にする。** これが主原則です。しかも npm ライブラリでは，その独立した側がたまたま恒久的に拒否されうる操作でもあるため，先頭へ置けば失敗コストまでタダになります。
+**依存の中心（独立した側）を先に作り，それに依存する記録を，後続の安価で冪等な回復可能操作にする。** これが主原則です。しかも NPM ライブラリでは，その独立した側がたまたま恒久的に拒否されうる操作でもあるため，先頭へ置けば失敗コストまでタダになります。
 
 100% の原子性は保証できません。しかし，依存整合性を守る Order A は，多くの失敗モードにおいて厳密にマシです。そしてその差は感覚論ではなく，**参照される親を先に作り，参照する子を後に作る** という，DB のトランザクション設計・参照整合性と同じ原則で明確に説明できます。
 
@@ -600,10 +600,10 @@ jobs:
 - **Release の本文とタイトルは published 後でも編集可能** であり，凍結対象とは明確に切り分ける必要がある
 - 一度 Release を削除してもタグ名は二度と再利用できず，リポジトリを作り直しても戻らない
 - `on: release: types: [published]` の後で `npm publish` する構成は，失敗時にバージョン番号を 1 つ焼き払う
-- npm / crates.io / PyPI / RubyGems では，**レジストリへの publish を先に成功させ，その後でタグと Release を作れ**
+- NPM / crates.io / PyPI / RubyGems では，**レジストリへの publish を先に成功させ，その後でタグと Release を作れ**
 - バイナリツールでは，**`gh release create <assets>` が全アセットを Draft 中に upload し，最後に atomic publish する挙動** を活かせ
 - Packagist / Go modules ではタグ作成そのものがリリースなので，タグ push をトリガーにしてよい
-- npm Trusted Publishing は長期の `NPM_TOKEN` を不要にし，provenance を自動付与する。ただし **npm 側には起点ワークフローファイル名を設定せよ**
+- NPM Trusted Publishing は長期の `NPM_TOKEN` を不要にし，provenance を自動付与する。ただし **NPM 側には起点ワークフローファイル名を設定せよ**
 - **カノニカルな成果物＝依存の中心を先に作り，それに依存する記録・派生物を後に作れば，ダングリング参照を防げる**
 - **イミュータブルなタグ / Release は，カノニカルなリリース行為が成功した瞬間に焼け。それより前に焼くな**
 
