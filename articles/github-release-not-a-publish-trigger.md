@@ -173,7 +173,7 @@ flowchart TD
     Q1 -->|Yes| P2["<b>パターン 2：Release 本体型</b>"]
     Q1 -->|"No（ライブラリ）"| Q2{"レジストリは<br/>何を取り込む？"}
     Q2 -->|"アーティファクトを upload<br/>NPM / crates.io / PyPI / RubyGems"| P1["<b>パターン 1：レジストリ本体型</b>"]
-    Q2 -->|"Git タグを読むだけ<br/>Packagist / Go modules"| P3["<b>パターン 3：タグ本体型</b>"]
+    Q2 -->|"Git タグを読むだけ<br/>Packagist / Go Modules"| P3["<b>パターン 3：タグ本体型</b>"]
 ```
 
 一覧にすると，以下のようになります。
@@ -182,7 +182,7 @@ flowchart TD
 |:--|:--|:--|:--|:--|
 | 1 | レジストリ本体型 | NPM<br>crates.io<br>PyPI<br>RubyGems | レジストリ上のアセット | レジストリ → GitHub Release |
 | 2 | Release 本体型 | GitHub Release<br>Homebrew<br>Scoop<br>NPM ミラー | GitHub Release 上のアセット | GitHub Release → ミラー |
-| 3 | タグ本体型 | Packagist<br>Go modules | Git タグ | タグ = GitHub Release |
+| 3 | タグ本体型 | Packagist<br>Go Modules | Git タグ | タグ = GitHub Release |
 
 「GitHub Release を先に作るな」という標語だけを覚えるのではなく，**カノニカルな成果物が何なのか** を見極めてください。ここからは，各パターンを掘り下げていきます。
 
@@ -359,7 +359,7 @@ NPM への公開は，さらに独立した `release-npm.yml` が担当します
 2. `gh release download` で Release のアーカイブを取得する。
 3. OIDC の Trusted Publishing で `npm publish` する。
 
-ここで NPM 用パッケージをゼロからビルドし直すのではなく，**カノニカルな GitHub Release のアーカイブを取得して再パッケージ** します。そのため NPM は二次的なミラーという位置付けです。認証はトークンレスで，provenance も自動付与されます。
+ここで NPM 用パッケージをゼロからビルドし直すのではなく，**カノニカルな GitHub Release のアーカイブを取得して再パッケージ** します。そのため NPM は二次的なミラーという位置付けです。認証はトークンレスで，Provenance も自動付与されます。
 
 そして `release-npm.yml` は，あえて `workflow_call` に対応させず **`workflow_dispatch` 専用** にしています。これは単なる好みではありません。
 
@@ -371,11 +371,11 @@ NPM Trusted Publishing の OIDC クレームは，publish を実行する再利�
 
 `suve` では，タグ作成，バイナリ入り Release 作成，NPM へのミラーのどれも，Release 公開イベントへ暗黙的に連鎖させていません。**すべて明示的な `workflow_dispatch` から動かし，カノニカルな成果物を確認して次へ進む。** Release 本体型における責務と順序が，そのままワークフロー分割へ現れています。
 
-## パターン 3：タグ本体型（Packagist / Go modules）
+## パターン 3：タグ本体型（Packagist / Go Modules）
 
 最後は，そもそもアップロードすべき別の成果物が存在しないパターンです。
 
-Packagist は GitHub の Webhook を受けると，リポジトリの Git タグを読み，`composer.json` を index します。Go modules も `proxy.golang.org` がタグを見て on-demand に取得します。NPM の tarball や PyPI の wheel のような成果物を，開発者が別途 upload する工程はありません。
+Packagist は GitHub の Webhook を受けると，リポジトリの Git タグを読み，`composer.json` を index します。Go Modules も `proxy.golang.org` がタグを見て on-demand に取得します。NPM の tarball や PyPI の wheel のような成果物を，開発者が別途 upload する工程はありません。
 
 つまり，この世界では次の 2 つが同義です。
 
@@ -387,7 +387,7 @@ Packagist は GitHub の Webhook を受けると，リポジトリの Git タグ
 sequenceDiagram
     actor Human as 人間
     participant GH as GitHub
-    participant Reg as Packagist / Go modules
+    participant Reg as Packagist / Go Modules
     actor User as 他のユーザー
 
     Human->>GH: タグを push（＝リリース）
@@ -402,7 +402,7 @@ sequenceDiagram
 :::message
 **このパターンだけは，タグ push を Webhook トリガーにしてよい唯一の例外です。**
 
-「トリガーにしてよい」といっても，タグの後ろで別のカノニカルな成果物を publish するわけではありません。Packagist や Go modules が，既に成立したリリースであるタグを読み取るだけです。
+「トリガーにしてよい」といっても，タグの後ろで別のカノニカルな成果物を publish するわけではありません。Packagist や Go Modules が，既に成立したリリースであるタグを読み取るだけです。
 :::
 
 パターン 1 でタグを先に打ってはいけないのは，その後ろに `npm publish` という失敗可能な本番工程が残るからでした。パターン 3 には，その工程自体がありません。だからタグ push がリリースの瞬間であり，その場で焼いて正しいのです。
@@ -425,7 +425,7 @@ sequenceDiagram
 
 パターン 3 でタグ push をトリガーにしてよいのは，タグ作成そのものがリリースだから成立する例外です。混同してはいけません。
 
-## ドラフトの併用と，provenance / immutability の切り分け
+## ドラフトの併用と，Provenance / Immutability の切り分け
 
 Workflow Dispatch から直接公開するだけでなく，ドラフトとして作成することもできます。本文の仕上げ方には，次の 2 つの流儀があります。
 
@@ -442,7 +442,7 @@ Workflow Dispatch から直接公開するだけでなく，ドラフトとし�
 - **NPM** は `npm publish --provenance`（OIDC 前提）で生成過程を証明でき，公開済みバージョンを上書きできないバージョン不変性も備えます。2 軸とも標準で満たせます。
 - **GitHub Release** は Immutable Releases で事後改竄を防げます。ただし **生成過程は標準では保証されません。** Immutable Releases が公開時に付ける attestation は「このバイトは本物」という **真正性** であって，「誰が・どの commit で作ったか」という **生成過程** ではないからです。
 
-生成過程まで保証したいなら，Immutability とは別レイヤの **`actions/attest-build-provenance`**（SLSA provenance）を足します。ただし現状は Releases ページに UI バッジが出ず，`gh attestation verify` などによる CLI 検証が中心で，npmjs.com 上でバッジが表示される NPM provenance とは対照的です。
+生成過程まで保証したいなら，Immutability とは別レイヤの **`actions/attest-build-provenance`**（SLSA Provenance）を足します。ただし現状は Releases ページに UI バッジが出ず，`gh attestation verify` などによる CLI 検証が中心で，npmjs.com 上でバッジが表示される NPM Provenance とは対照的です。
 
 # 3 パターンを貫く原則
 
@@ -572,7 +572,7 @@ NPM に載ったパッケージはゴミではありません。カノニカル�
 - **依存の中心（独立した成果物）を先に作り，それに依存する記録は後に作れ。** ダングリング参照を一瞬も作らない
 - パターン 1（NPM / crates.io / PyPI / RubyGems）：**publish → タグ / Release**
 - パターン 2（バイナリツール）：**Release(binaries) → 各レジストリへミラー**
-- パターン 3（Packagist / Go modules）：**タグ push ＝ リリース**（唯一トリガー化してよい）
+- パターン 3（Packagist / Go Modules）：**タグ push ＝ リリース**（唯一トリガー化してよい）
 - **イミュータブルなタグ / Release は，カノニカルなリリース行為が成功した瞬間にだけ焼け**
 
 # 参考リンク
