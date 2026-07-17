@@ -252,12 +252,6 @@ jobs:
 
 `npm publish` が失敗すれば後続には到達しません。**単純なステップ順序そのものが安全装置** です。
 
-:::message
-リリース本文を公開前に整えたい場合は，一度 **Draft として作成し，整えてから publish する** 手もあります（パターン 2 も同様）。
-
-筆者自身は，**先に publish まで確定させてしまい，本文だけ後から加筆・修正する** ほうが好みです。Immutable Releases でも本文とタイトルは編集可能なので，これで困りません。
-:::
-
 ## パターン 2：Release 本体型（バイナリツール）
 
 次は，コンパイル済みバイナリを GitHub Release のアセットとして配るツールです。私が開発している `mpyw/suve` も，このパターンに該当します。
@@ -413,6 +407,46 @@ sequenceDiagram
 
 パターン 1 でタグを先に打ってはいけないのは，その後ろに `npm publish` という失敗可能な本番工程が残るからでした。パターン 3 には，その工程自体がありません。だからタグ push がリリースの瞬間であり，その場で焼いて正しいのです。
 
+# パターン 1・2 のトリガーには何を選ぶか
+
+パターン 1・2 では，**カノニカルな成果物の生成（publish / Release）→ その記録** という順序が肝でした。では，その起点には何を選ぶべきでしょうか？結論から言えば，**Workflow Dispatch 一択に近い** です。
+
+## Workflow Dispatch（推奨）
+
+手動でワークフローを起動し，publish の成功後にタグ / Release を作ります。実装は前掲のパターン 1 の例を参照してください。未確定の状態からしか始まらないため，publish が失敗しても何も焼けません。
+
+リリースイベントを自動トリガーにする逃げ道もありません。GitHub 公式ドキュメントには，«Workflows are not triggered for the created, edited, or deleted activity types for draft releases.» とあります。つまりドラフト作成では `release` イベントが発火せず，`published` が届くのは公開時，すなわちタグが確定した後です。
+
+| トリガー | 発火するか | 発火時のタグ | 使えるか |
+|:--|:--|:--|:--|
+| リリースの **ドラフト作成** | 発火しない | （未作成） | ❌ そもそも起動しない |
+| リリースの **公開**（`published`） | 公開時に発火 | **既に確定済み** | ❌ アンチパターン |
+| **`workflow_dispatch`** | 任意のタイミング | 未確定 | ✅ 安全 |
+
+パターン 3 でタグ push をトリガーにしてよいのは，タグ作成そのものがリリースだから成立する例外です。混同してはいけません。
+
+## ドラフトの併用と，provenance / immutability の切り分け
+
+Workflow Dispatch から直接公開するだけでなく，ドラフトとして作成することもできます。本文の仕上げ方には，次の 2 つの流儀があります。
+
+- **先に公開まで確定させ，本文・タイトルだけ後から編集する。** Immutable Releases でも本文・タイトルは編集可能です。筆者はこちらが好みです。
+- **ドラフトで作っておき，加筆・修正して万全の状態にしてから公開する。** 稀にアセットを手動で追加 upload したい場合も，ドラフトが受け皿になります。
+
+ここでは，**provenance と immutability は別物** という切り分けが効いてきます。
+
+| 観点 | NPM provenance | GitHub Release Immutability |
+|:--|:--:|:--:|
+| 生成過程の保証（どの workflow / commit が作ったか） | ✅ | ❌ |
+| 事後の置き換え・改竄の防止（公開後に差し替えられないか） | ✅※ | ✅ |
+
+※ NPM の事後改竄防止は，同一バージョンを上書きできない「バージョン不変性」が担う別機能です。provenance 署名自体も成果物のハッシュに紐づくため，改竄は検知できます。
+
+NPM provenance は upload を OIDC の特定ワークフローに限定できるからこそ，「これはこの commit / workflow が作った」と署名付きで示せます。つまり，生成過程の保証です。一方，GitHub Release Immutability は公開後にタグ / アセットを凍結するだけで，**生成過程は何も保証しません。**
+
+そもそも GitHub Release には，「ドラフトを経たか」「手動 upload か CI ビルドか」を示す機能がありません。手動 upload でも CI ビルドでも Release 単体では区別できず，**GitHub Release は元々素性を保証していない** のです。
+
+Release バイナリの **生成過程まで** 保証したいなら，Immutability とは別レイヤの Artifact Attestations（`actions/attest-build-provenance`）が担当します。ただし現状は Releases ページに UI バッジが出ず，`gh attestation verify` などによる CLI 検証が中心です。npmjs.com 上でバッジが表示される NPM provenance とは対照的です。
+
 # 3 パターンを貫く原則
 
 ここまでの話を，1 つの原則に圧縮します。
@@ -555,3 +589,5 @@ https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-gen
 https://docs.npmjs.com/trusted-publishers/
 
 https://docs.npmjs.com/generating-provenance-statements/
+
+https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
