@@ -440,6 +440,169 @@ Packagist は GitHub の Webhook を受けると，リポジトリの Git タグ
 
 **何をトリガーにするかから考え始めるのではなく，何が成功したら「リリースできた」と言えるのかから考えてください。** その成功地点にタグと Release を置けば，Immutable Releases は怖い制約ではなく，完成した成果物を守ってくれる強力な仕組みになります。
 
+# 反論：ゴミの場所が入れ替わるだけでは？
+
+ここまで読んで，こんな反論を思い浮かべた方もいるのではないでしょうか？
+
+> `npm publish` を先に実行しても，その後の GitHub Release 作成が失敗したら，今度は npm にだけパッケージが残りますよね？結局，ゴミデータが残る場所が GitHub から npm へ入れ替わるだけでは？
+>
+> npm も GitHub もイミュータブルなら，どちらの順序でもリリース途中に失敗したらバージョンを上げるしかないのでは？
+
+鋭い指摘です。まず，この反論が正しい部分から認めましょう。
+
+## これは分散コミット問題である
+
+npm レジストリと GitHub は，互いに独立した 2 つのイミュータブルなストアです。両方へまたがる一連の操作は，データベースでいう **2 相コミット（2PC）** と同型の問題を抱えています。片方のコミットに成功しても，もう片方のコミットが失敗する可能性を消せません。
+
+そして npm と GitHub の間には，両方を 1 トランザクションとして確定・ロールバックしてくれるコーディネータが居ません。したがって，**2 系統をまたぐ完全な原子性は原理的に達成できない。** この点において，先ほどの反論は正しいです。
+
+しかし，ここから「ならばゴミの場所が対称に入れ替わるだけ」と結論付けるのは早計です。2 つの操作は，同じ確率・同じ理由・同じ重さで失敗するわけではありません。DB のトランザクション設計と同じく，**失敗特性の違いによる明確な非対称性** があります。
+
+## 拒否されうる不可逆コミットを先に置け
+
+DB では，制約チェックやバリデーションを `COMMIT` より前に済ませ，`COMMIT` 自体を最後に置きます。リリースでも同じ発想を使います。2 つの操作を失敗特性で分類してみましょう。
+
+| 操作 | 失敗特性 | 置くべき位置 |
+|:---|:---|:---|
+| `npm publish` | バージョン重複・名前ポリシー・2FA・権限剥奪・サイズ制限などで **恒久的に拒否されうる**。ばらつきが大きい | **最初**（失敗してもまだ何も焼けていない＝タダ） |
+| `git tag` / `gh release create` | 自分のリポジトリのメタデータ操作。**実質いつか必ず成功させられる** | **最後**（多少ハイカップしても再実行で収束） |
+
+ここで大事なのは，「どちらも失敗しうる」という二値の話ではありません。**その失敗は再実行で解消できるのか，それとも同じバージョンを恒久的に拒否しうるのか** という違いです。
+
+### Order A：`npm publish` → tag → Release
+
+この記事が推奨している順序です。
+
+- `npm publish` が失敗した場合
+  - まだタグも Release も焼けていません。同じバージョンで再実行できるため，バージョンの bump は不要です。
+- `npm publish` が成功し，tag / Release 作成でコケた場合
+  - npm には正しい成果物が存在します。tag と Release を冪等に再実行して追いつかせればよいため，やはり bump は不要です。
+
+この順序における不可逆な一点は，**`npm publish` の成功だけ** です。それ以降は，安く再実行でき，いつか必ず完了させられるメタデータ操作しか残りません。
+
+npm に載ったパッケージはゴミではありません。カノニカルなリリース行為に成功して得られた，**本物の成果物** です。GitHub 側の記録が一時的に遅れているだけなので，後から追いつかせれば収束します。
+
+### Order B：Release でタグを焼く → `npm publish`
+
+一方，従来の順序ではどうでしょうか？
+
+- タグと Release をイミュータブルに焼く。
+- その後で `npm publish` が，バージョン重複・名前ポリシー・2FA・権限剥奪・サイズ制限などの **恒久的な理由** で拒否される。
+- 焼いたタグは戻せず，npm にも成果物を載せられない。
+- バージョンを上げるしかなく，GitHub には **タグの墓標だけが残る**。
+
+こちらは，**恒久的に拒否されうる操作を，不可逆コミットの後ろへ置いています。** 失敗特性から見れば，明らかに順序が逆なのです。
+
+## npm から GitHub Release を復元できる
+
+Order A の決め手は，単に「GitHub のほうが後から直しやすそう」という感覚論ではありません。**npm から GitHub Release を復元する，冪等な回復アクションを実際に書ける** ことです。
+
+設計の肝は 3 つあります。
+
+1. **カノニカルな成果物の存在を先に検証する**
+   - npm にそのバージョンが本当に存在すると確認できた場合にしか，Release を作りません。「GitHub に記録だけがあり，npm には成果物が無い」という逆向きの不整合を再発させない安全弁です。
+2. **タグを打つ commit を npm 自身から復元する**
+   - 手軽な方法なら，`npm view <pkg>@<ver> gitHead` から publish 時の HEAD の SHA を取得できます。
+   - より堅牢に復元するなら，provenance の SLSA predicate に署名付きで記録されたソース commit を使えます。OIDC Trusted Publishing では provenance が自動付与されるため，**OIDC で publish していたおかげで，回復まで「正典」にできる** わけです。記事前半で説明した provenance が，ここで効いてきます。
+3. **すべてを冪等にする**
+   - tag は無ければ作り，有れば触らない。Release も無ければ作り，有れば何もしない。何度実行しても同じ完成状態へ収束させます。
+
+### 回復用ワークフロー
+
+たとえば `@mpyw/suve` を対象にするなら，次のような `workflow_dispatch` を用意できます。
+
+```yaml
+# .github/workflows/recover-release.yml
+name: Recover GitHub Release from npm
+run-name: "Recover release for ${{ inputs.version }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "既に npm に publish 済みのバージョン（例: 1.2.3）"
+        required: true
+        type: string
+      sha:
+        description: "（任意）タグを打つ commit。省略時は npm から復元"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. カノニカルな成果物が本当に存在するか検証（無ければ回復対象ではない）
+      - name: Verify the version exists on npm
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! npm view "@mpyw/suve@${VERSION}" version >/dev/null 2>&1; then
+            echo "npm に @mpyw/suve@${VERSION} が存在しません。中止します。"
+            exit 1
+          fi
+
+      # 2. タグを打つ commit を npm 自身（gitHead）から復元
+      - name: Resolve source commit
+        id: sha
+        env:
+          VERSION: ${{ inputs.version }}
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          sha="$INPUT_SHA"
+          if [ -z "$sha" ]; then
+            sha=$(npm view "@mpyw/suve@${VERSION}" gitHead)
+          fi
+          if [ -z "$sha" ]; then
+            echo "commit を特定できません。provenance を確認するか sha を手動指定してください。"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # 3. Release を冪等に作成（tag は --target で無ければ生成。既存ならスキップ）
+      - name: Create release if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          if gh release view "v${VERSION}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v${VERSION} は既に存在します。何もしません。"
+          else
+            gh release create "v${VERSION}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$SHA" \
+              --generate-notes
+          fi
+```
+
+この例では `git tag` ステップを別に書いていません。`gh release create --target <sha>` は，タグが存在しなければ指定した commit にタグを生成するため，tag と Release の回復を 1 本にまとめられます。既に Release が存在すれば何もしないので，失敗後に何度起動しても安全です。
+
+:::message alert
+**Order A では，この回復アクションが「npm には載ったが Release が無い」という状態を，ワンボタンで前へ収束させます。** さらに堅牢な運用では，回復元の SHA を npm パッケージ自身の署名付き provenance に基づいて確定できます。カノニカルなソース commit から GitHub 側を復元するため，回復経路へ別の commit を紛れ込ませる余地がありません。**OIDC で publish していたおかげで，回復まで「正典」になる** のです。
+
+**Order B では，そもそも同じ回復アクションを書きようがありません。** npm から恒久的に publish を拒否されたなら，先に焼いたタグの墓標を消す手段が存在しないからです。
+
+したがって，**「回復アクションが書けるかどうか」自体が，2 つの順序にある非対称性の証明** になっています。
+:::
+
+## 順序では救えない失敗もある
+
+もちろん，Order A なら何が起きても bump 不要になるわけではありません。**最初の不可逆コミットに成功した後で，中身が実は壊れていたと発覚した** というクラスの失敗は，どちらの順序でもバージョンを上げるしかありません。ここについては，反論が完全に正しいです。
+
+この領域を縮める方法も，DB のトランザクション設計と同じです。**不可逆コミットより前へ落とせる検証は，すべて前へ落とせ。**
+
+- `npm publish --dry-run` 相当の検証を先に実行する。
+- ビルドを publish より前に完了させる。
+- スモークテストを publish より前に通す。
+
+記事のパターン 2 で説明した `gh release create` も，まさに同じ構造を持っています。失敗しやすいアセットアップロードを Draft 中に済ませ，全アセットが揃った最後の一瞬だけ atomic publish する。これは **検証と失敗可能な処理を `COMMIT` より前へ寄せる** という，まったく同じ原則です。
+
+100% の原子性は保証できません。しかし Order A は，多くの失敗モードにおいて厳密にマシです。そして，その「マシ」は感覚論ではありません。**拒否されうる不可逆コミットを先に置き，後続を安価で冪等な回復可能操作だけにする。** DB のトランザクション設計と同じ原則で，明確に説明できる差なのです。
+
 # まとめ
 
 - GitHub の Immutable Releases は 2025 年 8 月にパブリックプレビュー，2025 年 10 月に GA され，公開済み Release の **タグとアセット** を凍結する
