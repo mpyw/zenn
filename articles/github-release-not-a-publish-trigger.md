@@ -136,7 +136,7 @@ Immutable Releases が凍結するのは **タグとアセット** です。公�
 **一度 Immutable Release を削除しても，そのタグ名は二度と再利用できません。リポジトリ自体を削除し，同じ名前で作り直しても再利用不可です。**
 :::
 
-これは「[リポジトリ復活攻撃（repository resurrection attack）](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)」を防ぐための意図的な仕様です。攻撃者に過去のリリースと同じ名前を再利用させないという意味では，非常に筋が通っています。
+これは「[リポジトリ復活攻撃（Repository Resurrection Attack）](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)」を防ぐための意図的な仕様です。攻撃者に過去のリリースと同じ名前を再利用させないという意味では，非常に筋が通っています。
 
 しかし，リリースフローの設計者にとっては前提がひっくり返ります。`gh release delete v1.2.3 --cleanup-tag` で消しても，`v1.2.3` は新品には戻りません。**一度焼いたタグ名は，もう焼き直せない。** この制約を前提として，取り返しのつかない操作をどの瞬間に置くか考え直さなければなりません。
 
