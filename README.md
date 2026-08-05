@@ -51,6 +51,8 @@
 
 ## その他
 
+- **[🔗 New Relic のログ検索結果に直リンクする隠し URL 仕様](https://zenn.dev/yumemi_inc/articles/new-relic-logs-deep-link)**
+  &nbsp;[[✍Edit]️](./articles/new-relic-logs-deep-link.md)
 - **[🔖 GitHub Release 作成をパッケージリリースのトリガーにするな！](https://zenn.dev/yumemi_inc/articles/github-release-not-a-publish-trigger)**
   &nbsp;[[✍Edit]️](./articles/github-release-not-a-publish-trigger.md)
 - **[🔐 Git 感覚で AWS / Google Cloud / Azure のシークレットを管理できる CLI/TUI/GUI ツール「suve」](https://zenn.dev/yumemi_inc/articles/suve-git-like-secret-management)**
