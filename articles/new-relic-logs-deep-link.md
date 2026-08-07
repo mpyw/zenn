@@ -153,7 +153,11 @@ ecs_task_arn:"arn:aws:ecs:ap-northeast-1:000000000000:task/my-cluster/0123456789
 
 # Python で URL を生成する
 
-最終的に動いている実装がこちらです。 `account_id` と `ecs_task_arn` には，説明用のダミー値を渡す前提です。
+実装は 2 つの関心に分けます。 **URL State を組み立てる部分** と， **Lucene の検索クエリを組み立てる部分** です。前者は Logs UI の非公式仕様に依存する汎用処理で，後者は「 ECS タスクとログレベルで絞る」という今回のユースケース固有の処理です。壊れる可能性があるのは前者だけなので，混ぜずに切っておきます。
+
+## URL State を組み立てる
+
+検索クエリを受け取り，そのまま Logs UI の URL にする部分です。
 
 ```python
 import base64
@@ -165,14 +169,50 @@ from urllib.parse import urlencode
 DEFAULT_DURATION_MS = 24 * 60 * 60 * 1000
 
 
-def build(
+def build_query(
     account_id: int,
-    ecs_task_arn: str,
-    minimum_log_level: str,
+    query: str,
     duration_ms: int = DEFAULT_DURATION_MS,
 ) -> str:
     base_url = "https://one.newrelic.com/launcher/logger.log-tailer"
 
+    # URL 組み立て
+    # platform[accountId] の [] は safe 指定でエンコードさせずそのまま渡す
+    query_string = urlencode(
+        {
+            "pane": base64.b64encode(
+                json.dumps(
+                    {
+                        "nerdletId": "logger.log-tailer",
+                        "accountId": account_id,
+                        "duration": duration_ms,
+                        "query": query,
+                    },
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).decode("utf-8"),
+            "platform[accountId]": account_id,
+        },
+        safe="[]",
+    )
+
+    return f"{base_url}?{query_string}"
+```
+
+ここで行っていることは，次の 3 段階に分けられます。
+
+- `nerdletId`・`accountId`・`duration`・`query` を JSON にする。
+- JSON を UTF-8 のバイト列にして base64 エンコードする。
+- `pane` と `platform[accountId]` をクエリパラメータとして URL にする。
+
+検索クエリの中身には一切関与しないため，ログレベルで絞ろうが特定の属性で絞ろうが，この関数は変わりません。
+
+## 検索クエリを組み立てる
+
+`build_query` に渡す検索クエリを作る側は，ユースケースごとに用意します。今回の「特定の ECS タスク × 最小ログレベル」はその一例です。
+
+```python
+def build_ecs_log_level_query(ecs_task_arn: str, minimum_log_level: str) -> str:
     # Lucene フィルタ作成
     params = [f'ecs_task_arn:"{ecs_task_arn}"']
     try:
@@ -187,48 +227,25 @@ def build(
         raise ValueError(f"Invalid MINIMUM_LOG_LEVEL: {minimum_log_level}") from e
     params.append("({})".format(" OR ".join(f'level:"{lvl}"' for lvl in levels)))
 
-    # URL 組み立て
-    # platform[accountId] の [] は safe 指定でエンコードさせずそのまま渡す
-    query_string = urlencode(
-        {
-            "pane": base64.b64encode(
-                json.dumps(
-                    {
-                        "nerdletId": "logger.log-tailer",
-                        "accountId": account_id,
-                        "duration": duration_ms,
-                        "query": " ".join(params),
-                    },
-                    separators=(",", ":"),
-                ).encode("utf-8")
-            ).decode("utf-8"),
-            "platform[accountId]": account_id,
-        },
-        safe="[]",
-    )
-
-    return f"{base_url}?{query_string}"
+    return " ".join(params)
 ```
 
-呼び出す値の例も示しておきます。
+## 組み合わせて呼び出す
+
+呼び出す値の例も示しておきます。 `account_id` と `ecs_task_arn` には，説明用のダミー値を渡しています。
 
 ```python
-url = build(
+url = build_query(
     account_id=1234567,
-    ecs_task_arn=(
-        "arn:aws:ecs:ap-northeast-1:000000000000:task/"
-        "my-cluster/0123456789abcdef0123456789abcdef"
+    query=build_ecs_log_level_query(
+        ecs_task_arn=(
+            "arn:aws:ecs:ap-northeast-1:000000000000:task/"
+            "my-cluster/0123456789abcdef0123456789abcdef"
+        ),
+        minimum_log_level="info",
     ),
-    minimum_log_level="info",
 )
 ```
-
-ここで行っていることは，次の 4 段階に分けられます。
-
-- ECS タスク ARN・最小ログレベルから Lucene フィルタを作る。
-- `nerdletId`・`accountId`・`duration`・`query` を JSON にする。
-- JSON を UTF-8 のバイト列にして base64 エンコードする。
-- `pane` と `platform[accountId]` をクエリパラメータとして URL にする。
 
 標準ライブラリだけで完結しており， Job Summary を組み立てる処理からそのまま呼び出せます。ただし，単に JSON を base64 にすれば終わりではありません。実運用で踏んだ細かい罠を続けて見ていきましょう。
 
