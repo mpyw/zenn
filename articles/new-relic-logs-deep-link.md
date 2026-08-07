@@ -169,7 +169,7 @@ from urllib.parse import urlencode
 DEFAULT_DURATION_MS = 24 * 60 * 60 * 1000
 
 
-def build_query(
+def build_url(
     account_id: int,
     query: str,
     duration_ms: int = DEFAULT_DURATION_MS,
@@ -209,10 +209,10 @@ def build_query(
 
 ## 検索クエリを組み立てる
 
-`build_query` に渡す検索クエリを作る側は，ユースケースごとに用意します。今回の「特定の ECS タスク × 最小ログレベル」はその一例です。
+`build_url` に渡す検索クエリを作る側は，ユースケースごとに用意します。今回の「特定の ECS タスク × 最小ログレベル」はその一例です。
 
 ```python
-def build_ecs_log_level_query(ecs_task_arn: str, minimum_log_level: str) -> str:
+def build_query(ecs_task_arn: str, minimum_log_level: str) -> str:
     # Lucene フィルタ作成
     params = [f'ecs_task_arn:"{ecs_task_arn}"']
     try:
@@ -235,9 +235,9 @@ def build_ecs_log_level_query(ecs_task_arn: str, minimum_log_level: str) -> str:
 呼び出す値の例も示しておきます。 `account_id` と `ecs_task_arn` には，説明用のダミー値を渡しています。
 
 ```python
-url = build_query(
+url = build_url(
     account_id=1234567,
-    query=build_ecs_log_level_query(
+    query=build_query(
         ecs_task_arn=(
             "arn:aws:ecs:ap-northeast-1:000000000000:task/"
             "my-cluster/0123456789abcdef0123456789abcdef"
