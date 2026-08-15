@@ -377,7 +377,7 @@ WHERE (:name    IS NULL OR name    = :name)
 
 ### 分かれ目 —— 「その実行専用の計画」を作れるか
 
-必要なのは，たったひとつ。**定数畳み込み（constant folding）**です。
+必要なのは，たったひとつ。 **定数畳み込み（Constant Folding）** です。
 
 さきほどの catch-all に，`name` だけを指定して投げたとしましょう。バインド値を定数として式に代入してから最適化すると，こうなります。
 
@@ -403,7 +403,7 @@ AND (TRUE  OR ...)
 
 元の 3 つの OR は跡形もなく消え，**`name = 'name100'` というただの等値述語だけが残りました**。ここまで来れば `name` のインデックスがそのまま使えます。
 
-つまり，静的 SQL ジェネレータが書かざるを得なかった catch-all を，オプティマイザが勝手に**「動的 SQL を書いたのと同じ状態」まで戻してくれる**わけです。
+つまり，静的 SQL ジェネレータが書かざるを得なかった catch-all を，オプティマイザが勝手に **「動的 SQL を書いたのと同じ状態」まで戻してくれる** わけです。
 
 :::message
 **「バインド値が見えている」ことと「定数畳み込みができる」ことは別物です。**
@@ -443,19 +443,19 @@ A は「何行ヒットするか」の精度を上げるだけで，B は「述�
 
 だから B をやるには，次のどちらかの逃げ道が要ります。
 
-1. **計画を毎回作り直す**（＝ キャッシュを諦める）
-2. **パラメータの状態ごとに，複数の計画をキャッシュする**（＝ キャッシュを分ける）
+1. **計画を毎回作り直す**<br>（＝ キャッシュを諦める）
+2. **Nullable なパラメータの状態ごとに，複数の計画をキャッシュする**<br>（＝ キャッシュを分ける）
 
 この観点で並べると，こうなります。
 
-| RDBMS | B（畳み込み）をどう実現するか |
-|:---|:---|
-| **MySQL 8** | **①。** そもそも実行計画をキャッシュせず，EXECUTE のたびに最適化する |
-| **PostgreSQL** | **①。** custom plan を毎回作る（既定で選ばれる。後述） |
-| **SQL Server 〜2022** | **①（明示指定時）。** `OPTION (RECOMPILE)` で「この計画はキャッシュしない」と宣言する |
+| RDBMS | B（畳み込み）をどう実現するか                                                                                                                                              |
+|:---|:-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **MySQL 8** | **①。** そもそも実行計画をキャッシュせず，EXECUTE のたびに最適化する                                                                                                                    |
+| **PostgreSQL** | **①。** Custom Plan を毎回作る（既定で選ばれる。後述）                                                                                                                         |
+| **SQL Server 〜2022** | **①（明示指定時）。** `OPTION (RECOMPILE)` で「この計画はキャッシュしない」と宣言する                                                                                                     |
 | **SQL Server 2025** | **②（既定）。** [OPPO](https://learn.microsoft.com/en-us/sql/relational-databases/performance/optional-parameter-optimization) が NULL 状態ごとに複数の計画をキャッシュし，各々を畳む（後述） |
-| **Oracle** | **①も②も無い** |
-| **SQLite** | ——（そもそも畳み込まない。別事情） |
+| **Oracle** | **①も②も無い**                                                                                                                                                   |
+| **SQLite** | ——（そもそも畳み込まない。別事情）                                                                                                                                           |
 
 **Oracle だけが，①の宣言手段も，NULL 状態に基づく②も持ちません。** 共有プールでの計画共有が設計の根幹にあり，そこから降りる口が用意されていないのです。
 
@@ -490,7 +490,7 @@ catch-all への耐性は，これでそのまま決まります。
 
 ### 実測: 5 つの RDBMS で確かめた
 
-「本当にそうなのか」を，**5 つすべてで実際に測りました。**
+「本当にそうなのか」を，**5 つすべてで実際に測りました**（SQL Server は 2022 と 2025 の両方）。
 
 #### 検証方法
 
@@ -515,14 +515,13 @@ WHERE (:b1 IS NULL OR name    = :b1)   -- :b1 = 'name100'
 |:---|:---|:---|---:|:---:|
 | **MySQL 8.4** | `Index lookup using ix_name (name='name100')`<br>`Handler_read_rnd_next = 0` | 同じ | **1 倍** | ✅ |
 | **PostgreSQL 17** | `Index Scan using ix_name`<br>`Index Cond: (name = 'name100')` | 同じ | **1 倍** | ✅ |
+| **SQL Server 2025** | logical reads **6**（OPPO 既定 ON） | logical reads 3 | **2 倍** | ✅ |
 | **SQL Server 2022** | logical reads **601** | logical reads 3 | **200 倍** | ❌ |
 | **Oracle XE 21c** | `TABLE ACCESS FULL`<br>Buffers **788** | `INDEX RANGE SCAN`<br>Buffers 3 | **263 倍** | ❌ |
 | **SQLite 3.43** | `SCAN employees`<br>3.88 ms | 0.016 ms | **243 倍** | ❌ |
 
-きれいに 2 つに割れました。
-
-- **MySQL と PostgreSQL は理想と完全に同じ計画。** `EXPLAIN` の出力からバインド変数が消えて実際の値に置き換わり，`job` と `dept_no` の条件は跡形もありません。これがまさに定数畳み込みです
-- **Oracle・SQLite・SQL Server は全表走査。** ただし SQL Server だけは `OPTION (RECOMPILE)` を付けると理想値に一致しました
+- **MySQL・PostgreSQL・SQL Server 2025 は理想どおり。** MySQL と PostgreSQL は `EXPLAIN` からバインド変数が消えて実際の値に置き換わり，`job` と `dept_no` の条件は跡形もありません。SQL Server 2025 は OPPO が既定で効いてインデックスシークになります
+- **SQL Server 2022・Oracle・SQLite は全表走査。** ただし SQL Server 2022 は `OPTION (RECOMPILE)` を付ければ理想値に一致します（**同じ製品でも 2025 と 2022 で既定の挙動が分かれる**のが象徴的です）
 
 以下，DB ごとに補足します。
 
@@ -566,17 +565,25 @@ Generic Plan に切り替わること自体は，**問題ではありません**
 
 PostgreSQL が安全なのは「たまたま良い方を引いているから」ではなく，**そもそも両方を天秤にかけているから**。Oracle には天秤に載せる片方が存在しません。
 
-#### SQL Server —— `OPTION (RECOMPILE)` で理想値に一致
+#### SQL Server —— 2022 は `OPTION (RECOMPILE)`，2025 は既定（OPPO）
 
-測定は **SQL Server 2022**（互換性レベル 160）です。既定では畳み込まれませんが，`OPTION (RECOMPILE)` を付けると理想値に一致します。
+**SQL Server 2022**（互換性レベル 160）は既定では畳み込まれませんが，`OPTION (RECOMPILE)` を付けると理想値に一致します。
 
-| | logical reads |
+| SQL Server 2022 | logical reads |
 |:---|---:|
 | catch-all + パラメータ（ヒント無し） | 601 |
 | catch-all + パラメータ + `OPTION (RECOMPILE)` | **3** |
 | `WHERE name = @p1`（理想） | 3 |
 
-なお **SQL Server 2025（互換性レベル 170）では，ヒント無しでも既定で改善します。** OPPO が有効になり，NULL 状態ごとに複数の計画をキャッシュして振り分けるためです。今回の測定対象の 2022 には無い機能です。
+そして **SQL Server 2025（互換性レベル 170）では，ヒント無しでも既定で改善します。** OPPO が NULL 状態ごとに複数の計画をキャッシュして振り分けるためです。こちらも実測しました。
+
+| SQL Server 2025 | logical reads |
+|:---|---:|
+| catch-all + パラメータ（ヒント無し・OPPO 既定 ON） | **6** |
+| 同上 + `USE HINT('DISABLE_OPTIONAL_PARAMETER_OPTIMIZATION')`（OPPO 無効） | 601 |
+| `WHERE name = @p1`（理想） | 3 |
+
+**ヒント無しで 601 → 6**（20 万行に対しこの reads はインデックスシークが使われた証拠。全表走査なら 601）。OPPO を明示的に切ると 601 に戻るので，差の原因が OPPO であることも確認できました。同じ catch-all が，バージョンが上がるだけで既定で救われるようになったわけです。
 
 #### Oracle —— リテラルなら畳み込めるのに，バインドだとできない
 
