@@ -8,6 +8,8 @@
   &nbsp;[[✍Edit]️](./articles/rdb-ids-and-timestamps-best-practices.md)**
 - **[🔒 排他制御のためだけに Redis 渋々使ってませんか？データベース単独でアドバイザリーロックできるよ！](https://zenn.dev/mpyw/articles/rdb-advisory-locks)
   &nbsp;[[✍Edit]️](./articles/rdb-advisory-locks.md)**
+- **[📜 静的 SQL ジェネレータはなぜ Oracle と相性が悪いのか](https://zenn.dev/mpyw/articles/rdb-sql-construction-strategies)
+  &nbsp;[[✍Edit]️](./articles/rdb-sql-construction-strategies.md)**
 
 ## Go
 
