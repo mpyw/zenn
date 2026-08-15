@@ -17,7 +17,7 @@ publication_name: "yumemi_inc"
 
 **「条件分岐の多い検索クエリが，どう頑張っても Oracle でまともな実行計画にならない」**
 
-という， EXPLAIN を適用して初めて顕在化した性能問題です。 調べていくうちに分かったのは，これが特定のライブラリの出来不出来ではなく，**「アプリケーションから SQL を発行する方式をどう選ぶか」という，言語にもフレームワークにも依存しない設計判断**だったということでした。そして，**この問題は RDBMS として Oracle を扱うまで顕在化しにくい**ため，PostgreSQL や MySQL だけを触ってきた人には事前に気づきようがありません。
+という， EXPLAIN を適用して初めて顕在化した性能問題です。 調べていくうちに分かったのは，これが特定のライブラリの出来不出来ではなく，**「アプリケーションから SQL を発行する方式をどう選ぶか」という，言語にもフレームワークにも依存しない設計判断**だったということでした。そして，**同じ問題は他の RDBMS でも起こりうるのに，逃げ道が一切無いのは Oracle だけ**でした。PostgreSQL や MySQL だけを触ってきた人には事前に気づきようがありません。
 
 そこでこの記事では，特定の言語・ライブラリの話に閉じないように， SQL を発行する方式を整理します。 **オプティマイザとの相性** を主眼に置き，各方式の長所・短所を比較します。最後に，方式を変えたときに失われがちな **静的安全性をどう取り戻すか** に触れます。
 
@@ -112,7 +112,7 @@ sqlc のエコシステム紹介のようになってしまいますが，**最�
 
 エンティティ（オブジェクト）を主役に置き，SQL の存在を意識させないことを目指す方式です。
 
-```php:Symfony の Doctrine ORM の例
+```php:Doctrine ORM の例
 // イメージ
 $employees = $repository->findBy([
     'deptNo' => 10,
@@ -181,7 +181,7 @@ $query = $db->table('employees')
 | [**Rails**](https://rubyonrails.org/)（Ruby） | [Active Record](https://guides.rubyonrails.org/active_record_basics.html) | [Arel](https://api.rubyonrails.org/classes/Arel.html) |
 | [**Sequel**](https://sequel.jeremyevans.net/)（Ruby） | [Model](https://sequel.jeremyevans.net/rdoc/classes/Sequel/Model.html) | [Dataset](https://sequel.jeremyevans.net/rdoc/files/doc/dataset_basics_rdoc.html) |
 | [**TypeORM**](https://typeorm.io/)（TypeScript） | [Repository API](https://typeorm.io/docs/working-with-entity-manager/working-with-repository/) | [QueryBuilder](https://typeorm.io/docs/query-builder/select-query-builder/) |
-| [**MikroORM**](https://mikro-orm.io/)（TypeScript） | EntityManager | [QueryBuilder](https://mikro-orm.io/docs/query-builder)（内部で Knex を使用） |
+| [**MikroORM**](https://mikro-orm.io/)（TypeScript） | EntityManager | [QueryBuilder](https://mikro-orm.io/docs/query-builder) |
 | [**Drizzle**](https://orm.drizzle.team/)（TypeScript） | [Relational Queries](https://orm.drizzle.team/docs/rqb)（`db.query`） | [`db.select()`](https://orm.drizzle.team/docs/select) |
 | [**Objection.js**](https://vincit.github.io/objection.js/) + [**Knex**](https://knexjs.org/)（TypeScript） | Objection.js（別パッケージ） | Knex |
 | [**bun**](https://bun.uptrace.dev/)（Go） | [Relations](https://bun.uptrace.dev/guide/relations.html)（`Relation()`） | [`NewSelect()`](https://bun.uptrace.dev/guide/query-select.html) |
@@ -195,7 +195,7 @@ $query = $db->table('employees')
 **「ORM レイヤーがある」の中身は，ライブラリによってかなり違います。**
 
 - **フル ORM** …… 変更追跡・遅延ロード・オブジェクトグラフ永続化まで持つ。Hibernate，Doctrine ORM，Eloquent，Active Record など
-- **アクティブレコード風の CRUD 補助** …… 主キーを持つ行を `store()` / `delete()` できるが，オブジェクトグラフの永続化はしない。jOOQ の [UpdatableRecord](https://www.jooq.org/doc/latest/manual/sql-execution/crud-with-updatablerecords/) がこれで，jOOQ 自身「full fledged ORM ではない」と明言しています
+- **アクティブレコード風の CRUD 補助** …… 主キーを持つ行を `store()` / `delete()` できるが，オブジェクトグラフの永続化はしない。jOOQ の [UpdatableRecord](https://www.jooq.org/doc/latest/manual/sql-execution/crud-with-updatablerecords/) がこれで，作者自身「[jOOQ は full fledged ORM ではない](https://blog.jooq.org/how-to-use-jooqs-updatablerecord-for-crud-to-apply-a-delta/)」と述べています
 - **取得済みエンティティの関連ナビゲーション** …… Komapper の [Association API](https://www.komapper.org/docs/reference/association/) は `@KomapperOneToMany` などの注釈から関連を辿る関数を生成しますが，辿る先は `include` で **既に取得済みの `EntityStore`** であって，遅延ロードは発生しません
 - **ネストした読み取り専用の関連取得** …… Drizzle の [Relational Queries](https://orm.drizzle.team/docs/rqb) は 1 本の SQL でネストしたオブジェクトを返す読み取り用 API で，コアのビルダーの上に **オプトインで乗る層**です
 
@@ -209,30 +209,7 @@ $query = $db->table('employees')
 
 ## 静的 SQL ジェネレータ
 
-前章のとおりです。**SQL ファイルが正本で，コードは生成物**という向きになります。ライブラリ一覧も前章に載せました。
-
-> ```sql
-> -- name: findByDept :many
-> SELECT emp_no, name, job, dept_no
-> FROM employees
-> WHERE dept_no = :deptNo
-> ORDER BY emp_no;
-> ```
-
-> ```go
-> type FindByDeptParams struct {
->     DeptNo int32
-> }
-> type FindByDeptRow struct {
->     EmpNo  int32
->     Name   string
->     Job    string
->     DeptNo int32
-> }
-> func (q *Queries) FindByDept(ctx context.Context, deptNo int32) ([]FindByDeptRow, error) {
->     // ...
-> }
-> ```
+冒頭の「静的 SQL ジェネレータ方式とは？」で説明したものです。**SQL ファイルが正本で，コードは生成物**という向きになります（例とライブラリ一覧はそちらを参照）。
 
 ## SQL テンプレート
 
@@ -257,13 +234,13 @@ ORDER BY emp_no
 
 肝は，**この SQL ファイルをそのままコピーして SQL クライアントに貼ると，何も直さずに実行できる**ことです。`/*%if */` はただのブロックコメントなので無視され，`/* deptNo */10` はコメントの直後に置かれたテスト用リテラル `10` が使われます。実行時にはテンプレートエンジンが `10` をプレースホルダに差し替え，条件が偽なら **`AND dept_no = ?` という行そのものが SQL テキストから消えます**。 「SQL クライアントで動かす向き」と「アプリから実行する向き」の 2 通りに使えるので **2-way** です。
 
-この方式の起源は日本の Seasar プロジェクトの [**S2Dao**](https://www.seasar.org/wiki/?S2Dao) で，そこから [**Doma**](https://doma.readthedocs.io/)（Java）に受け継がれました。Doma の作者による Kotlin 版が [**Komapper**](https://www.komapper.org/) です。
+この方式の起源は日本の Seasar プロジェクトの [**S2Dao**](https://www.seasar.org/wiki/?S2Dao) で，そこから [**Doma**](https://docs.domaframework.org/)（Java）に受け継がれました。Doma の作者による Kotlin 版が [**Komapper**](https://www.komapper.org/) です。
 
 ---
 
 # SQL 実行方式の長所・短所
 
-5 つの軸で並べます。
+次の観点で並べます。
 
 |                             | **ORM**<br>（抽象度：高） | **クエリビルダー**<br>（抽象度：低〜中） | **静的 SQL<br>ジェネレータ** | **SQL テンプレート** |
 |:----------------------------|:------------------:|:------------------------:|:--------------------:|:--------------:|
@@ -275,7 +252,7 @@ ORDER BY emp_no
 | **静的安全性<br>(Mapping レイヤー)** |         ◎          |       △ 〜 ◎<br>（ライブラリ差大）        |        **◎◎**        |       △        |
 | **表現力の上限**                  |     ライブラリ API      |        ライブラリ API         |         SQL          |      SQL       |
 
-ひとつずつ見ていきます。
+上 5 つの軸をひとつずつ見ていきます（**表現力の上限**は「書けるものが SQL そのものか，ライブラリ API に縛られるか」の違いで，本文では随所で触れます）。
 
 ## 再利用性
 
@@ -293,7 +270,7 @@ countQuery.andWhere { activeInDept(deptNo) }
 
 一箇所直せば全部に反映され，**一貫性はコンパイラが保証してくれます**。
 
-一方，**静的 SQL ジェネレータはここが構造的に弱いというより，端的に手段がありません**。1 クエリ = 1 つの完結した SQL テキストである以上，「WHERE 句のこの部分だけを共有する」という概念自体が存在しないのです。結果として何が起きるか。
+一方，**静的 SQL ジェネレータはここが極端に弱い**です。1 クエリ = 1 つの完結した SQL テキストである以上，「WHERE 句のこの部分だけを部品として共有する」という概念が無く，やるとしても文字列を切り貼りするくらいしかありません。結果として何が起きるか。
 
 - ほぼ同じ WHERE 句が複数のクエリに **コピペで散らばる**
 - 一箇所直したときに他が追随しているかを **機械的に保証できない**
@@ -334,23 +311,23 @@ criteria.deptNo?.let { query.andWhere { Emp.deptNo eq it } }
 /*%if deptNo != null */ AND dept_no = /* deptNo */10     /*%end */
 ```
 
-**静的 SQL ジェネレータだけが，ここで壁に激突します。** SQL テキストは静的に固定されているのだから，「条件を消す」ことができない。書ける形は 1 つしかありません。
+**静的 SQL ジェネレータだけが，ここで壁に激突します。** SQL テキストは静的に固定されているのだから，「条件を消す」ことができない。素直に書くと，たいていこの形になります。
 
-```sql:静的 SQL ジェネレータで書ける唯一の形（catch-all query）
+```sql:静的 SQL ジェネレータに寄せると，こうなりがち（catch-all query）
 SELECT * FROM employees
-WHERE (:useName   = 0 OR name    = :name)
-  AND (:useJob    = 0 OR job     = :job)
-  AND (:useDeptNo = 0 OR dept_no = :deptNo);
+WHERE (:name    IS NULL OR name    = :name)
+  AND (:job     IS NULL OR job     = :job)
+  AND (:deptNo  IS NULL OR dept_no = :deptNo);
 ```
 
-制御用のブーリアンをバインドし，「使わないなら条件を無効化する」というやつです。組み合わせの数だけクエリを書き分けるという手もありますが，条件 5 個で 32 本，6 個で 64 本になるので現実的ではありません。
+**「そのパラメータが NULL なら条件を無効化する」**というやつです。組み合わせの数だけクエリを書き分ける手もありますが，条件 5 個で 32 本，6 個で 64 本になるので現実的ではありません（複数クエリの事前定義や DB 側のビュー / ファンクションに逃がす道もありますが，いずれも別の複雑さを抱え込みます）。
 
 この書き方には SQL Server 界隈で **catch-all query** あるいは **kitchen sink query** という名前が付いており，**古典的なアンチパターンとして知られています**。
 
 :::details 呼び名の出典
 - **catch-all query** —— Gail Shaw が 2009 年に自身のブログで書いたのが初出とされます。[SQLServerCentral に再掲された *Revisiting catch-all queries*](https://www.sqlservercentral.com/blogs/revisiting-catch-all-queries) が読めます
 - **kitchen sink query** —— 同じパターンの別名です。Erik Darling は「kitchen sink クエリについては多く書かれてきたが，お気に入りは Aaron Bertrand と Gail Shaw のもの」と[述べています](https://erikdarling.com/the-only-thing-worse-than-optional-parameters/)
-- Microsoft 自身も **optional parameter problem** としてこれを問題と認めており，[公式ドキュメントに専用のページ](https://learn.microsoft.com/en-us/sql/relational-databases/performance/optional-parameter-optimization)があります（SQL Server 2022 の Optional Parameter Plan Optimization はこの緩和策です）
+- Microsoft 自身もこれを **optional parameter** の問題として認めており，[公式ドキュメントに専用のページ](https://learn.microsoft.com/en-us/sql/relational-databases/performance/optional-parameter-optimization)があります（SQL Server 2025 の Optional Parameter Plan Optimization はこの緩和策。後で詳しく触れます）
 - なお本記事で何度か引く Erland Sommarskog の [*Dynamic Search Conditions in T-SQL*](https://www.sommarskog.se/dyn-search.html) は，この分野の正典ですが **「catch-all」「kitchen sink」という語は使っていません**。彼は一貫して "dynamic search conditions" と呼びます
 :::
 
@@ -366,9 +343,9 @@ WHERE (:useName   = 0 OR name    = :name)
 
 ```sql:catch-all query（再掲）
 SELECT * FROM employees
-WHERE (:useName   = 0 OR name    = :name)
-  AND (:useJob    = 0 OR job     = :job)
-  AND (:useDeptNo = 0 OR dept_no = :deptNo);
+WHERE (:name    IS NULL OR name    = :name)
+  AND (:job     IS NULL OR job     = :job)
+  AND (:deptNo  IS NULL OR dept_no = :deptNo);
 ```
 
 任意条件が N 個あるこの SQL は，**意味的には 2^N 個の別々のクエリ**です。「名前だけで検索」「名前と部署で検索」「何も指定せず全件」……これらは最適な実行計画が全部違います。名前にインデックスがあるなら 1 つ目はインデックススキャンであるべきだし，最後は全表走査で構いません。
@@ -378,10 +355,12 @@ WHERE (:useName   = 0 OR name    = :name)
 多くの RDBMS は「SQL テキストをキーにして実行計画をキャッシュする」設計になっています。すると **2^N 通りの意味を持つクエリに対して，実行計画が 1 個しか作られません。** ではその 1 個はどうなるのか。
 
 :::message alert
-**「どの組み合わせでも間違いにならない計画」，つまり全表走査です。**
+**「どの組み合わせでも間違いにならない計画」，つまり全表走査に寄ります。**
 :::
 
-`(:useName = 0 OR name = :name)` という形が残っている限り，**`:name` に何が入っていてもインデックスは使えません**。インデックスで絞れるのは述語が `name = 何か` の形をしているときだけですが，この式は **「`:useName` が 0 なら全行が該当しうる」** という可能性を含んでいます。そんな計画は作れません。
+`(:name IS NULL OR name = :name)` という形が残っている限り，**素直にはインデックスが使えません**。インデックスで絞れるのは述語が `name = 何か` の形をしているときだけですが，この式は **「`:name` が NULL なら全行が該当しうる」** という可能性を含んでいるからです。
+
+厳密には，オプティマイザには **OR 展開**という抜け道が 1 つあります（`(:name IS NULL) OR (name = :name)` を，NULL 用の全表走査ブランチと非 NULL 用のインデックスブランチの `UNION ALL` に書き換える手）。ただしこれは **条件が 1〜2 個のうちだけで，3 個を超えると組み合わせ爆発で破綻します**（後の Oracle 節で実測とともに扱います）。**多条件検索という catch-all 本来の用途では，全表走査に落ちる**と考えてよいです。
 
 :::message
 **「最初に実行された組み合わせに最適化されてしまう」わけではありません。**
@@ -393,11 +372,11 @@ WHERE (:useName   = 0 OR name    = :name)
 覗いた値が効くのは **カーディナリティ推定**のほうです。行数の見積もりが最初の組み合わせに引きずられるので，**結合順序のような「推定に依存する部分」だけが不安定**になります。
 :::
 
-「オプティマイザが賢ければ `:useName = 0` が偽のときは分岐を消してくれるのでは？」と思うかもしれません。**その通りで，そこが RDBMS ごとの分かれ目になります。**
+「オプティマイザが賢ければ `:name IS NULL` が偽のときは分岐を消してくれるのでは？」と思うかもしれません。**その通りで，そこが RDBMS ごとの分かれ目になります。**
 
 ### 分かれ目 —— 「その実行専用の計画」を作れるか
 
-**必要なのは，たったひとつ。定数畳み込み（constant folding）です。**
+必要なのは，たったひとつ。**定数畳み込み（constant folding）**です。
 
 さきほどの catch-all に，`name` だけを指定して投げたとしましょう。バインド値を **定数として式に代入してから**最適化すると，こうなります。
 
@@ -421,7 +400,7 @@ AND (TRUE  OR ...)
     name = 'name100'
 ```
 
-**元の 3 つの OR は跡形もなく消え，`name = 'name100'` というただの等値述語だけが残りました。** ここまで来れば `name` のインデックスがそのまま使えます。
+元の 3 つの OR は跡形もなく消え，**`name = 'name100'` というただの等値述語だけが残りました**。ここまで来れば `name` のインデックスがそのまま使えます。
 
 つまり，静的 SQL ジェネレータが書かざるを得なかった catch-all を，**オプティマイザが勝手に「動的 SQL を書いたのと同じ状態」まで戻してくれる**わけです。
 
@@ -450,52 +429,63 @@ SQL Server はこれを **Parameter Embedding Optimization** と呼びます（[
 
 ---
 
-**A は「何行ヒットするか」の精度を上げるだけ。B は「述語の形」を変える。**
-**そして，インデックスを使えるかどうかを決めるのは B です。**
+A は「何行ヒットするか」の精度を上げるだけで，B は「述語の形」を変える。**インデックスを使えるかどうかを決めるのは B です。**
 
-だから catch-all を救えるのは B だけです。**Oracle は A までは行いますが，B に進みません。**
+だから catch-all を救えるのは B だけです。Oracle は A までは行いますが，B に進みません。
 :::
 
-#### B と実行計画のキャッシュは，両立しない
+#### B は「単一の共有計画」とは両立しない
 
 ここで当然の疑問が出ます。**B のほうが明らかに得なのに，なぜやらない DB があるのか。**
 
-**実行計画のキャッシュと両立しないから**です。
+**畳み込んだ計画は，その値でしか正しくないから**です。`(:b1 IS NULL OR name = :b1)` を `name = 'name100'` にした計画は，次に `:b1` が NULL で実行されたとき **間違っています**。つまり **「1 つの SQL テキストに 1 つの計画を対応させて使い回す」という素朴なキャッシュとは両立しません**。
 
-多くの RDBMS は **SQL テキストをキーにして実行計画をキャッシュ**します。そしてバインド変数は，**SQL テキストを 1 つに保ったまま値だけ差し替える**ための仕組みです。両者は組で機能しています。
+だから B をやるには，次のどちらかの逃げ道が要ります。
 
-ところが B をやると，この前提が壊れます。 `(:b1 IS NULL OR name = :b1)` を `name = 'name100'` にした計画は，**`:b1` が NULL のときには間違っています**。つまり **同じ SQL テキストなのに，値ごとに違う計画が必要**になる。これはもう，SQL テキストをキーにしたキャッシュには置けません。
+1. **計画を毎回作り直す**（＝ キャッシュを諦める）
+2. **パラメータの状態ごとに，複数の計画をキャッシュする**（＝ キャッシュを分ける）
 
-だから B は，**「この実行のためだけに計画を作り，キャッシュには置かない（あるいは捨てる）」こととセット**でしか成立しません。分かれ目はここです。 **「その実行専用の計画」を作る道が用意されているか。**
+この観点で並べると，こうなります。
 
-| RDBMS | 実行計画のキャッシュ                  | **キャッシュ無視で「その実行専用の計画」を作れるか**                       |
-|:---|:----------------------------|:---------------------------------------------------|
-| **MySQL 8** | **❌️**                      | ✅️<br>（そもそもキャッシュされない）                              |
-| **PostgreSQL** | ✅️<br>**Generic Plan 選択時**  | ✅️<br>**Custom Plan 選択時**。<br>どちらを使うかはコスト見積もりで自動選択 |
-| **SQL Server** | ✅                           | ✅<br>**`OPTION (RECOMPILE)`** 宣言でキャッシュ一時無効化        |
-| **Oracle** | ✅<br>共有プール                  | ❌️<br>**キャッシュを諦める手段が用意されていない**                     |
-| **SQLite** | ⚠️<br>Prepared Statement 単位 | ——<br>（そもそも畳み込まないので別事情）                            |
+| RDBMS | B（畳み込み）をどう実現するか |
+|:---|:---|
+| **MySQL 8** | **①。** そもそも実行計画をキャッシュせず，EXECUTE のたびに最適化する |
+| **PostgreSQL** | **①。** custom plan を毎回作る（既定で選ばれる。後述） |
+| **SQL Server 〜2022** | **①（明示指定時）。** `OPTION (RECOMPILE)` で「この計画はキャッシュしない」と宣言する |
+| **SQL Server 2025** | **②（既定）。** [OPPO](https://learn.microsoft.com/en-us/sql/relational-databases/performance/optional-parameter-optimization) が NULL 状態ごとに複数の計画をキャッシュし，各々を畳む（後述） |
+| **Oracle** | **①も②も無い** |
+| **SQLite** | ——（そもそも畳み込まない。別事情） |
 
-**Oracle だけが「キャッシュを使わない」という選択肢を持ちません。** 共有プールはインスタンス全体で共有される単一の構造で，**パースを避けて計画を共有すること自体が設計の中心**にあるからです。
+**Oracle だけが，①の宣言手段も，NULL 状態に基づく②も持ちません。** 共有プールでの計画共有が設計の根幹にあり，そこから降りる口が用意されていないのです。
 
 :::message
-**Oracle の畳み込み機構そのものは正常に動きます。**
+**「両立しない」のは “素朴な” キャッシュとだけです。**
 
-後の実測で示しますが，**リテラルを直書きすれば Oracle もきちんとインデックスを使います**。壊れているわけではありません。
+SQL Server 2025 の OPPO は②の実例です。1 つの SQL テキストに対し「`@p IS NULL` 用」「`@p IS NOT NULL` 用」の **複数の計画（query variant）を作ってキャッシュ**し，実行時に振り分けます。[公式ドキュメント](https://learn.microsoft.com/en-us/sql/relational-databases/performance/optional-parameter-optimization)いわく，各 variant は "**simplifies predicates based on the actual parameter value ... This constant result folding allows the optimizer to generate execution plans that aren't valid in a single reusable plan**"。まさに「畳み込みを，複数キャッシュで両立させる」機構です。
 
-そして「リテラルを直書きすればいいのでは」は，実は筋が通っています。**SQL テキストに値が入るのでキャッシュキーが値ごとに分かれ**，B と再利用が両立するからです。
+つまり Oracle に無いのは畳み込む能力ではなく，**①の宣言も②の複数キャッシュも用意されていない**という一点です。
+:::
+
+:::message
+**「リテラルを直書きすればいいのでは」は，実は筋が通っています。**
+
+**SQL テキストに値が入るのでキャッシュキーが値ごとに分かれ**，B と再利用が両立するからです（後の実測でも，Oracle はリテラルならきちんとインデックスを使います）。
 
 問題は，**値の種類だけキャッシュエントリが増える**こと。共有プールが溢れ，SQL Injection のリスクも上がります。このトレードオフは後で **「構造は動的，値はバインド変数」** として整理します。
 :::
 
 catch-all への耐性は，これでそのまま決まります。
 
-| RDBMS | **B（リテラル扱い）**                        | 既定での耐性 | 対処後 |
-|:---|:-------------------------------------|:---:|:---:|
-| **MySQL 8** | **✅ 常にリテラル扱いする**                     | **◎** | ◎ |
-| **PostgreSQL** | **✅ リテラル扱い する/しない で効率のいいほうを採る**      | **◎** | ◎ |
-| **SQL Server** | **⚠️ `OPTION (RECOMPILE)` を書いたときだけ** | ✗ | ◎ |
-| **Oracle** | **❌ 決してやらない**                        | **✗✗** | **✗✗** |
+| RDBMS | 既定で畳み込むか | 対処後 |
+|:---|:---|:---:|
+| **MySQL 8** | **✅ 常に** | ◎ |
+| **PostgreSQL** | **✅ 既定で**（コスト比較で自動選択） | ◎ |
+| **SQL Server 2025** | **✅ 既定で**（OPPO） | ◎ |
+| **SQL Server 〜2022** | **✗**（`OPTION (RECOMPILE)` で解決） | ◎ |
+| **Oracle** | **✗✗ 手段が無い** | **✗✗** |
+| **SQLite** | **✗**（畳み込まない・ただし別事情） | ○ |
+
+**既定で壊れるのは Oracle・SQL Server（〜2022）・SQLite の 3 つ**です。ただし SQLite は事実上無害，SQL Server は `OPTION (RECOMPILE)` で確実に直り，2025 では既定で直ります。**逃げ道が一切無いのは Oracle だけ** —— これが本記事のタイトルの意味です。
 
 ### 実測: 5 つの RDBMS で確かめた
 
@@ -522,77 +512,24 @@ WHERE (:b1 IS NULL OR name    = :b1)   -- :b1 = 'name100'
 
 | RDBMS | catch-all + バインドの結果 | 理想（`WHERE name = ?`） | 差 | 畳み込み |
 |:---|:---|:---|---:|:---:|
-| **PostgreSQL 17** | `Index Scan using ix_name`<br>`Index Cond: (name = 'name100')` | 同じ | **1 倍** | ✅ |
 | **MySQL 8.4** | `Index lookup using ix_name (name='name100')`<br>`Handler_read_rnd_next = 0` | 同じ | **1 倍** | ✅ |
+| **PostgreSQL 17** | `Index Scan using ix_name`<br>`Index Cond: (name = 'name100')` | 同じ | **1 倍** | ✅ |
 | **SQL Server 2022** | logical reads **601** | logical reads 3 | **200 倍** | ❌ |
 | **Oracle XE 21c** | `TABLE ACCESS FULL`<br>Buffers **788** | `INDEX RANGE SCAN`<br>Buffers 3 | **263 倍** | ❌ |
 | **SQLite 3.43** | `SCAN employees`<br>3.88 ms | 0.016 ms | **243 倍** | ❌ |
 
 きれいに 2 つに割れました。
 
-- **PostgreSQL と MySQL は理想と完全に同じ計画。** `EXPLAIN` の出力から **バインド変数が消えて実際の値に置き換わり**，`job` と `dept_no` の条件は跡形もありません。これがまさに定数畳み込みです
+- **MySQL と PostgreSQL は理想と完全に同じ計画。** `EXPLAIN` の出力から **バインド変数が消えて実際の値に置き換わり**，`job` と `dept_no` の条件は跡形もありません。これがまさに定数畳み込みです
 - **Oracle・SQLite・SQL Server は全表走査。** ただし SQL Server だけは `OPTION (RECOMPILE)` を付けると理想値に一致しました
 
 以下，DB ごとに補足します。
 
-#### Oracle —— リテラルなら畳み込めるのに，バインドだとできない
+#### MySQL —— 考えることが何も無い
 
-Oracle で **同じクエリを「バインド変数」と「リテラル直書き」の 2 通り**で流すと，こうなりました。
+MySQL は伝統的に **実行計画をキャッシュしません**。プリペアドステートメントでもパースツリー等の内部構造はキャッシュしますが，**最適化は EXECUTE のたびに走ります**。したがって毎回の値で畳み込みが効きます。
 
-```text:(1) バインド変数 —— 全表走査。3 つの条件がすべて残っている
-| Id  | Operation          | Name      | Starts | E-Rows | A-Rows | Buffers |
-|   0 | SELECT STATEMENT   |           |      1 |        |      1 |     788 |
-|   1 |  SORT AGGREGATE    |           |      1 |      1 |      1 |     788 |
-|*  2 |   TABLE ACCESS FULL| EMPLOYEES |      1 |     25 |      1 |     788 |
-
-   2 - filter(((:B2 IS NULL OR "JOB"=:B2) AND (:B3 IS NULL OR "DEPT_NO"=:B3) AND
-              (:B1 IS NULL OR "NAME"=:B1)))
-```
-
-```text:(2) リテラル直書き —— インデックスが使われ，条件が 1 つに畳み込まれている
-| Id  | Operation         | Name    | Starts | E-Rows | A-Rows | Buffers |
-|   0 | SELECT STATEMENT  |         |      1 |        |      1 |       3 |
-|   1 |  SORT AGGREGATE   |         |      1 |      1 |      1 |       3 |
-|*  2 |   INDEX RANGE SCAN| IX_NAME |      1 |      1 |      1 |       3 |
-
-   2 - access("NAME"='name100')
-```
-
-同じ表，同じ統計，同じオプティマイザ。違いはリテラルかバインドかだけです。それで Buffers が **788 対 3，263 倍**になりました。
-
-:::details Oracle 側で回避できないのか
-
-畳み込めない以上，Oracle に残された道は **「OR を含んだままの述語を，オプティマイザ側の変換でなんとかする」**しかありません。それが **OR 展開**です（12.2 以降のコストベース OR-expansion，11g 以前は CONCATENATION）。うまくいけば FILTER が startup filter として働き，片方のブランチしか実行されません。
-
-**しかしこれは滅多に成立しません。** コストベースの変換なので選ばれないことが多く，任意条件が AND で N 個並ぶと分岐が 2^N に爆発して内部上限に当たります。体感として **条件 3 個以上では実質的に成立しない**というのが正直なところです。
-
-手で書く回避策も同じで，**条件が 3 個を超えると全部破綻します。**
-
-| 回避策 | 評価 |
-|:---|:---|
-| `col = NVL(:b, col)` | Oracle が特別扱いしてヒント無しで startup filter 付きの CONCATENATION を生成する。ただし **NOT NULL 列限定**（NULL だと `col = col` が偽になる），かつ **1 〜 2 条件が限界**。`COALESCE` では同じ変換は起きない |
-| `UNION ALL` を手書きで展開 | 確実だが条件数に対して指数的に膨らむ。**2 個が限界** |
-| `/*+ OR_EXPAND */` ヒント | 条件数が増えると効かなくなる延命策 |
-| コメントに乱数を入れて SQL テキストを毎回変える | ハードパースを強制できるが，**共有プールが共有不能カーソルで溢れて library cache mutex 競合を起こす**。インスタンス全体に被害が及ぶので，SQL Server の RECOMPILE より遥かに害が大きい |
-
-なお，畳み込みが効かないと選択率の推定もデフォルト値ベースになります。実務上は **アクセスパスが全表走査に落ちることより，結合順序が崩壊することのほうが致命傷**になりやすいです。
-
-**そして Adaptive Cursor Sharing も助けになりません。** 計画を複数持てるようにする仕組みであって畳み込みとは無関係ですし，「範囲述語」「ヒストグラムのある列への等値」を bind-sensitive と判定するものなので，**「バインドが NULL かどうか」というスイッチでは発火しません。**
-:::
-
-#### SQL Server —— `OPTION (RECOMPILE)` で理想値に一致
-
-| | logical reads |
-|:---|---:|
-| catch-all + パラメータ（ヒント無し） | 601 |
-| catch-all + パラメータ + `OPTION (RECOMPILE)` | **3** |
-| `WHERE name = @p1`（理想） | 3 |
-
-#### SQLite —— そもそも畳み込まない
-
-SQLite だけは事情が違いました。**リテラルを直書きしても `SCAN employees`** のままだったのです。バインド値が見えないから畳み込めないのではなく，**この形の畳み込みを行いません**。
-
-もっとも SQLite は組み込みで，共有プールのようなインスタンス全体の構造を持ちません。**条件ごとに SQL を組み立て直して prepare し直すコストが極めて安い**ので，実務上の困り方は Oracle とはまったく違います。
+「再最適化のコストを毎回払っている」とも言えますが，catch-all の文脈では完全に味方です。**設定も書き方も何も要らず，ただ壊れない**というのは 5 つの中でここだけでした。
 
 #### PostgreSQL —— 両方作って，安いほうを採る
 
@@ -628,39 +565,76 @@ Generic Plan に切り替わること自体は，**問題ではありません**
 
 PostgreSQL が安全なのは「たまたま良い方を引いているから」ではなく，**そもそも両方を天秤にかけているから**です。Oracle には天秤に載せる片方が存在しません。
 
-#### MySQL —— 考えることが何も無い
+#### SQL Server —— `OPTION (RECOMPILE)` で理想値に一致
 
-MySQL は伝統的に **実行計画をキャッシュしません**。プリペアドステートメントでもパースツリー等の内部構造はキャッシュしますが，**最適化は EXECUTE のたびに走ります**。したがって毎回の値で畳み込みが効きます。
+測定は **SQL Server 2022**（互換性レベル 160）です。既定では畳み込まれませんが，`OPTION (RECOMPILE)` を付けると理想値に一致します。
 
-「再最適化のコストを毎回払っている」とも言えますが，catch-all の文脈では完全に味方です。**設定も書き方も何も要らず，ただ壊れない**というのは 5 つの中でここだけでした。
+| | logical reads |
+|:---|---:|
+| catch-all + パラメータ（ヒント無し） | 601 |
+| catch-all + パラメータ + `OPTION (RECOMPILE)` | **3** |
+| `WHERE name = @p1`（理想） | 3 |
 
----
+なお **SQL Server 2025（互換性レベル 170）では，ヒント無しでも既定で改善します。** OPPO が有効になり，NULL 状態ごとに複数の計画をキャッシュして振り分けるためです。今回の測定対象の 2022 には無い機能です。
 
-### 依拠すべき原則 —— 「構造は動的，値はバインド変数」
+#### Oracle —— リテラルなら畳み込めるのに，バインドだとできない
 
-Oracle における多条件検索の古典的な解は，昔から **「構造は動的，値はバインド変数」** と言われてきました。Oracle 社のエンジニアとして Q&A サイト [Ask Tom](https://asktom.oracle.com/) で長年質問に答え続け，Oracle 界隈の常識を形づくってきた **Tom Kyte** の定石です。
+Oracle で **同じクエリを「バインド変数」と「リテラル直書き」の 2 通り**で流すと，こうなりました。
 
-Oracle 文化の第一戒律「バインド変数を使え」は，パースが共有プール / library cache という **インスタンス全体で共有される単一構造**を触り，latch / mutex によって **セッション間で直列化する**ことに由来します。しかしこの教えはしばしば **「SQL テキストを 1 個に固定しろ」と誤読されます。** Tom Kyte が言っていたのは「**値**をバインドしろ」であって，「**構造**を固定しろ」ではありません。
+```text:(1) バインド変数 —— 全表走査。3 つの条件がすべて残っている
+| Id  | Operation          | Name      | Starts | E-Rows | A-Rows | Buffers |
+|   0 | SELECT STATEMENT   |           |      1 |        |      1 |     788 |
+|   1 |  SORT AGGREGATE    |           |      1 |      1 |      1 |     788 |
+|*  2 |   TABLE ACCESS FULL| EMPLOYEES |      1 |     25 |      1 |     788 |
 
-ここには **独立した 2 軸**があります。
+   2 - filter(((:B2 IS NULL OR "JOB"=:B2) AND (:B3 IS NULL OR "DEPT_NO"=:B3) AND
+              (:B1 IS NULL OR "NAME"=:B1)))
+```
 
-|                 | **値：埋め込み**                 | **値：バインド変数**                                        |
-|:----------------|:---------------------------|:----------------------------------------------------|
-| **SQL：静的**      | 不可能                        | **catch-all query**<br>計画が 1 個しか作られず，全パターンが誤った計画を使う |
-| **SQL：動的** | 共有プール爆死<br>+ SQL Injection | ⭐ **これが定石**<br>**ここに移りたい**                          |
+```text:(2) リテラル直書き —— インデックスが使われ，条件が 1 つに畳み込まれている
+| Id  | Operation         | Name    | Starts | E-Rows | A-Rows | Buffers |
+|   0 | SELECT STATEMENT  |         |      1 |        |      1 |       3 |
+|   1 |  SORT AGGREGATE   |         |      1 |      1 |      1 |       3 |
+|*  2 |   INDEX RANGE SCAN| IX_NAME |      1 |      1 |      1 |       3 |
 
-右下に移ると何が起きるでしょうか。
+   2 - access("NAME"='name100')
+```
 
-- 生成される SQL テキストの種類 = **実際に使われる条件の組み合わせ数**。実行回数や値の種類には比例しない
-- 検索画面に条件が 10 個あっても，実際に使われる組み合わせは数種類に偏るので，キャッシュされる計画の数は現実的な範囲に収束する
-- その一つ一つが **その組み合わせに最適な実行計画**を持ち，何千回も再利用される
+同じ表，同じ統計，同じオプティマイザ。違いはリテラルかバインドかだけです。それで Buffers が **788 対 3，263 倍**になりました。
 
-catch-all（計画 1 個・全パターンで誤り）と，リテラル直書き（計画が無限）の，**ちょうど良い中間**です。
+:::details Oracle 側で回避できないのか
 
-そして重要なのは，**この性質は特定のライブラリの機能ではない**ということです。
+畳み込めない以上，Oracle に残された道は **「OR を含んだままの述語を，オプティマイザ側の変換でなんとかする」**しかありません。それが **OR 展開**です（12.2 以降のコストベース OR-expansion，11g 以前は CONCATENATION）。**条件が 1 個だけなら，実際にこう展開されてインデックスが使われます**（実測。`:nm` だけの catch-all）。
 
-- **ORM も，クエリビルダーも，SQL テンプレートも，すべてこの右下のマスに立っています。**
-- **静的 SQL ジェネレータだけが，設計思想として右上のマスに固定されているのです。**
+```text:条件 1 個なら OR 展開が成立し，非 NULL ブランチでインデックスが使われる
+| Id  | Operation                | Name            |
+|   2 |   VIEW                   | VW_ORE_xxxxxxxx |
+|   3 |    UNION-ALL             |                 |
+|   5 |      INDEX FAST FULL SCAN| （PK）           |   ← :nm IS NULL のブランチ
+|   7 |      INDEX RANGE SCAN    | IX_NAME         |   ← name = :nm のブランチ
+```
+
+**しかし条件が増えると破綻します。** コストベースの変換なので選ばれないことも多く，任意条件が AND で N 個並ぶと分岐が 2^N に爆発して内部上限に当たります。実測でも，**条件を 3 個に増やした時点で OR 展開は消え，`TABLE ACCESS FULL` に落ちました**（本文の測定はこの 3 条件版）。多条件検索という catch-all 本来の用途では，成立しないと考えてよいです。
+
+手で書く回避策も同じで，**条件が 3 個を超えると全部破綻します。**
+
+| 回避策 | 評価 |
+|:---|:---|
+| `col = NVL(:b, col)` | Oracle が特別扱いしてヒント無しで startup filter 付きの CONCATENATION を生成する。ただし **NOT NULL 列限定**（NULL だと `col = col` が偽になる），かつ **1 〜 2 条件が限界**。`COALESCE` では同じ変換は起きない |
+| `UNION ALL` を手書きで展開 | 確実だが条件数に対して指数的に膨らむ。**2 個が限界** |
+| `/*+ OR_EXPAND */` ヒント | 条件数が増えると効かなくなる延命策 |
+| コメントに乱数を入れて SQL テキストを毎回変える | ハードパースを強制できるが，**共有プールが共有不能カーソルで溢れて library cache mutex 競合を起こす**。インスタンス全体に被害が及ぶので，SQL Server の RECOMPILE より遥かに害が大きい |
+
+なお，畳み込みが効かないと選択率の推定もデフォルト値ベースになります。実務上は **アクセスパスが全表走査に落ちることより，結合順序が崩壊することのほうが致命傷**になりやすいです。
+
+**そして Adaptive Cursor Sharing も助けになりません。** 計画を複数持てるようにする仕組みであって畳み込みとは無関係ですし，「範囲述語」「ヒストグラムのある列への等値」を bind-sensitive と判定するものなので，**「バインドが NULL かどうか」というスイッチでは発火しません。**
+:::
+
+#### SQLite —— そもそも畳み込まない
+
+SQLite だけは事情が違いました。**リテラルを直書きしても `SCAN employees`** のままだったのです。バインド値が見えないから畳み込めないのではなく，**この形の畳み込みを行いません**。
+
+もっとも SQLite は組み込みで，共有プールのようなインスタンス全体の構造を持ちません。**条件ごとに SQL を組み立て直して prepare し直すコストが極めて安い**ので，実務上の困り方は Oracle とはまったく違います。
 
 ## 静的安全性
 
@@ -685,7 +659,7 @@ ORM とクエリビルダーは，構文レベルでは壊しようがありま�
 - **SQL テンプレートは △。** SQL は結局ただの文字列であり，列名の誤りは実行してみるまで分かりません
 
 :::message
-**SQL テンプレートの中では [Doma](https://doma.readthedocs.io/) が一段強い**です。アノテーションプロセッサが **コンパイル時に SQL ファイルを検証**し，ファイルの存在・テンプレートのディレクティブ構文・バインド変数名と DAO メソッド引数の対応まで見ます。
+**SQL テンプレートの中でも [Doma](https://docs.domaframework.org/) や [Komapper](https://www.komapper.org/docs/reference/query/querydsl/command/) は一段強い**です。アノテーションプロセッサが **コンパイル時にテンプレートを検証**し，ディレクティブ構文（`/*%end */` の欠落など）・未使用パラメータ・パラメータの型やメンバまで見ます（Komapper の `@KomapperCommand` は型メンバー検査まで踏み込みます）。
 
 ただし **実スキーマとの照合まではしません。** 存在しない列を書いてもコンパイルは通ります。
 :::
@@ -712,6 +686,36 @@ ORM とクエリビルダーは，構文レベルでは壊しようがありま�
 :::
 
 **SQL テンプレートは両レイヤーとも △**，つまり素直に劣化します。**この劣化をどう埋めるかが，方式を変えるうえでの最大の宿題**になります。最後の章で扱います。
+
+---
+
+# 依拠すべき原則 —— 「構造は動的，値はバインド変数」
+
+ここまで方式ごとの長所・短所を軸で見てきました。**では，オプティマイザとの相性の問題をどう避けるのか。** その原則を先に据えてから，具体的な方式選定に入ります。
+
+Oracle における多条件検索の古典的な解は，昔から **「構造は動的，値はバインド変数」** と言われてきました。Oracle 社のエンジニアとして Q&A サイト [Ask Tom](https://asktom.oracle.com/) で長年質問に答え続け，Oracle 界隈の常識を形づくってきた **Tom Kyte** の定石です。
+
+Oracle 文化の第一戒律「バインド変数を使え」は，パースが共有プール / library cache という **インスタンス全体で共有される単一構造**を触り，latch / mutex によって **セッション間で直列化する**ことに由来します。しかしこの教えはしばしば **「SQL テキストを 1 個に固定しろ」と誤読されます。** Tom Kyte が言っていたのは「**値**をバインドしろ」であって，「**構造**を固定しろ」ではありません。
+
+ここには **独立した 2 軸**があります。
+
+|                 | **値：埋め込み**                 | **値：バインド変数**                                        |
+|:----------------|:---------------------------|:----------------------------------------------------|
+| **SQL：静的**      | 不可能                        | **catch-all query**<br>計画が 1 個しか作られず，全パターンが誤った計画を使う |
+| **SQL：動的** | 共有プール爆死<br>+ SQL Injection | ⭐ **これが定石**<br>**ここに移りたい**                          |
+
+右下に移ると何が起きるでしょうか。
+
+- 生成される SQL テキストの種類 = **実際に使われる条件の組み合わせ数**。実行回数や値の種類には比例しない
+- 検索画面に条件が 10 個あっても，実際に使われる組み合わせは数種類に偏るので，キャッシュされる計画の数は現実的な範囲に収束する
+- その一つ一つが **その組み合わせに最適な実行計画**を持ち，何千回も再利用される
+
+catch-all（計画 1 個・全パターンで誤り）と，リテラル直書き（計画が無限）の，**ちょうど良い中間**です。
+
+そして重要なのは，**この性質は特定のライブラリの機能ではない**ということです。
+
+- **ORM も，クエリビルダーも，SQL テンプレートも，すべてこの右下のマスに立っています。**
+- **静的 SQL ジェネレータだけが，設計思想として右上のマスに固定されているのです。**
 
 ---
 
@@ -752,7 +756,7 @@ ORM とクエリビルダーは，構文レベルでは壊しようがありま�
 
 ## SQL テンプレート方式
 
-[Doma](https://doma.readthedocs.io/)・[MyBatis](https://mybatis.org/mybatis-3/dynamic-sql.html)・[uroboroSQL](https://future-architect.github.io/uroborosql-doc/)（Java），[Komapper のテンプレートクエリ](https://www.komapper.org/docs/reference/query/querydsl/template/)（Kotlin），[go-twowaysql](https://github.com/future-architect/go-twowaysql)（Go），[JinjaSQL](https://github.com/sripathikrishnan/jinjasql)（Python），[HugSQL](https://www.hugsql.org/)（Clojure）などです。
+[Doma](https://docs.domaframework.org/)・[MyBatis](https://mybatis.org/mybatis-3/dynamic-sql.html)・[uroboroSQL](https://future-architect.github.io/uroborosql-doc/)（Java），[Komapper のテンプレートクエリ](https://www.komapper.org/docs/reference/query/querydsl/template/)（Kotlin），[go-twowaysql](https://github.com/future-architect/go-twowaysql)（Go），[JinjaSQL](https://github.com/sripathikrishnan/jinjasql)（Python），[HugSQL](https://www.hugsql.org/)（Clojure）などです。
 
 :::message
 **専用ライブラリは JVM 系に厚く，それ以外では薄いのが実情です。** 2-way SQL が日本の Seasar 由来という出自と無関係ではないでしょう。
@@ -778,6 +782,10 @@ ORM とクエリビルダーは，構文レベルでは壊しようがありま�
 ### TIPS: 断片の再利用性が低いなら，`@include` を自作せよ
 
 前述の比較表で SQL テンプレートの再利用性を **△** としたのは，**断片を共有する機構がライブラリによって弱い**ためです。
+
+:::message
+**Komapper には公式の断片共有機構があります。** [`@KomapperPartial` + `/*> name */`](https://www.komapper.org/docs/reference/query/querydsl/command/)（COMMAND クエリの機能）で，`null` を渡せば SQL に含まれず，`/*%if */` を含む断片も扱えます。以下の `@include` 自作は，**この Partial の制約（partial は別の partial を参照できない・SQL が `.sql` ファイルではなくアノテーション内の文字列になる）を避け，SQL ファイルのまま多段に組みたい**場合の代替として読んでください。汎用テンプレートエンジンで自作するときの一般論としても使えます。
+:::
 
 多くのテンプレート実装は「文字列を差し込む」機構を持っています。しかし **差し込んだ中身が再解析されるとは限りません**。これは実際に踏んだ罠なので具体例を挙げます。Komapper の [Embedded SQL Variables](https://www.komapper.org/docs/reference/query/querydsl/template/)（`/*# name */`）に，`/*%if */` を含む断片を渡すとこうなりました。
 
@@ -847,7 +855,7 @@ SELECT emp_no, name, job, dept_no FROM employees
 ORDER BY emp_no;
 ```
 
-**このファイルが真価を発揮するのは，変更したときです。**
+このファイルが真価を発揮するのは，**変更したとき**です。
 
 たとえば「退職者を一律で除外する」という要件が来たとしましょう。実装では述語を 1 つ足すだけですが，**PR にはこう出ます。**
 
@@ -930,13 +938,13 @@ Z  src/test/snapshots/**        指定ごとに解決した SQL
 
 # まとめ
 
-## catch-all query が Oracle でだけ壊れる理由
+## catch-all query の逃げ道が Oracle にだけ無い理由
 
-- **静的 SQL ジェネレータは「1 クエリ = 1 つの静的な SQL テキスト」という制約と不可分**であり，条件分岐を含むクエリでは **catch-all query を書くしかなくなる**
-- **`(:b IS NULL OR col = :b)` という形が残る限り，どの値でもインデックスは使えない**
-- 救う方法は **バインド値をリテラルとして扱った計画を作る**ことだけ。ただしその計画はその値でしか正しくないので，**実行計画のキャッシュと両立しない**
-- **MySQL は常に，PostgreSQL は既定でそうする。** SQL Server も `OPTION (RECOMPILE)` で解禁できる
-- **Oracle にだけその手段が無い。** 無いのは畳み込む能力ではなく，**「この計画はキャッシュしないので埋め込んでよい」と宣言する手段**のほうである
+- **静的 SQL ジェネレータは「1 クエリ = 1 つの静的な SQL テキスト」という制約と不可分**であり，条件分岐を含むクエリでは **catch-all query を書きがち**になる
+- **`(:b IS NULL OR col = :b)` という形が残る限り，素直にはインデックスが使えない**（OR 展開という抜け道はあるが，条件 3 個で破綻する）
+- 救うには **バインド値をリテラルとして扱った計画を作る**必要がある。ただしその計画はその値でしか正しくないので，**「1 SQL テキスト = 1 計画」の素朴なキャッシュとは両立しない**。逃げ道は「毎回作り直す」か「状態ごとに複数の計画をキャッシュする」の 2 択
+- **MySQL は常に，PostgreSQL は既定で**畳み込む。SQL Server も `OPTION (RECOMPILE)`（〜2022）や OPPO（2025 既定）で解決できる
+- **Oracle にだけ，そのどちらの手段も無い。** 無いのは畳み込む能力ではなく，**素朴なキャッシュから降りる術**のほうである（リテラル直書きすれば Oracle も普通にインデックスを使う）
 
 ## どうするか
 
@@ -976,7 +984,7 @@ https://dev.mysql.com/doc/refman/8.4/en/statement-caching.html
 
 ## SQL テンプレート / 2-way SQL
 
-https://doma.readthedocs.io/
+https://docs.domaframework.org/
 
 https://www.komapper.org/docs/
 
