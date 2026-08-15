@@ -854,7 +854,7 @@ SELECT ...
 
 ここで大事なのが，**プレースホルダ形（`?`）ではなく，値を埋めた形で書き出す**ことです。そして **テスト入力値だけをヘッダコメントに列挙**します。
 
-```sql:flyer-cards.snapshot.sql
+```sql:employee-search-by-name.snapshot.sql
 -- テスト入力値。以下に無い値はクエリが持つ固定値。
 --   name = 'name100'
 SELECT emp_no, name, job, dept_no FROM employees
