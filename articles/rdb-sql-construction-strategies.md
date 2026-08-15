@@ -859,16 +859,16 @@ SELECT ...
 --   name = 'name100'
 SELECT emp_no, name, job, dept_no FROM employees
 WHERE name = 'name100'
-  AND employment_kbn IN ('0', '2')
+  AND employment_type IN ('FULL_TIME', 'PART_TIME')
 ORDER BY emp_no
 ```
 
-`name = 'name100'` はヘッダに載っているのでテスト入力だと分かります。一方 **`employment_kbn IN ('0', '2')` はヘッダに無いので，クエリ自身が持つ固定値**（この一覧が対象とする雇用区分の集合）だと読めます。
+`name = 'name100'` はヘッダに載っているのでテスト入力だと分かります。一方 **`employment_type IN ('FULL_TIME', 'PART_TIME')` はヘッダに無いので，クエリ自身が持つ固定値**（この一覧が対象とする雇用形態の集合）だと読めます。
 
 :::message
 **なぜプレースホルダ形ではダメなのか。**
 
-プレースホルダ形だと，この gate は `employment_kbn IN (?, ?)` としか出ません。**「いくつ区分を許すか」は分かっても「どの区分か」が消える**ので，`'0', '2'` が意図どおりかをレビューできません。しかも `?` は入力バインドか固定値バインドかの区別も付きません。
+プレースホルダ形だと，この gate は `employment_type IN (?, ?)` としか出ません。**「いくつ区分を許すか」は分かっても「どの区分か」が消える**ので，`FULL_TIME` と `PART_TIME` だけで意図どおりか（`CONTRACT` を含めなくてよいか）をレビューできません。しかも `?` は入力バインドか固定値バインドかの区別も付きません。
 
 値を埋めておけば，**入力値の由来はヘッダで切り分けられ，クエリが埋め込んだ定数はそのまま目に見える**。この方が検査できる情報が多いのです。
 :::
@@ -878,7 +878,7 @@ ORDER BY emp_no
 ```diff:「退職者を除外する」を足したときの差分
  SELECT emp_no, name, job, dept_no FROM employees
  WHERE name = 'name100'
-   AND employment_kbn IN ('0', '2')
+   AND employment_type IN ('FULL_TIME', 'PART_TIME')
 +  AND retired = 0
  ORDER BY emp_no
 ```
