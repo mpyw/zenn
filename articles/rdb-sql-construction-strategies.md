@@ -610,6 +610,10 @@ Oracle で同じクエリを**「バインド変数」と「リテラル直書�
 
 同じ表，同じ統計，同じオプティマイザ。違いはリテラルかバインドかだけです。それで Buffers が **788 対 3，263 倍**になりました。
 
+:::message
+**これはエディションに依存しません。** 測定は XE ですが，[XE 21c は Enterprise Edition のフル機能セットを同梱](https://blogs.oracle.com/database/oracle-database-21c-xe-generally-available)しており（リソース上限付き），**一番機能が多い状態でも全表走査**でした。しかも catch-all を救えるとしたらそれは述語の畳み込みか OR 展開で，これは全エディション共通のコア CBO の話です。[適応計画のような EE 限定機能](https://mikedietrichde.com/2017/06/12/adaptive-execution-plans-not-available-oracle-se2/)は結合の適応であって述語を畳みません。SE2（適応計画すら無い）でも同じ，むしろ機能が少ないぶん良くなる余地はありません。
+:::
+
 :::details Oracle 側で回避できないのか
 
 畳み込めない以上，Oracle に残された道は **「OR を含んだままの述語を，オプティマイザ側の変換でなんとかする」**しかありません。それが **OR 展開**です（12.2 以降のコストベース OR-expansion，11g 以前は CONCATENATION）。**条件が 1 個だけなら，実際にこう展開されてインデックスが使われます**（実測。`:nm` だけの catch-all）。
