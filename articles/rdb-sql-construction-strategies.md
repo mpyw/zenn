@@ -3,7 +3,7 @@ title: "静的 SQL ジェネレータはなぜ Oracle と相性が悪いのか"
 emoji: "😢"
 type: "tech"
 topics: ["database", "sql", "orm", "oracle", "postgresql"]
-published: false
+published: true
 publication_name: "yumemi_inc"
 ---
 
