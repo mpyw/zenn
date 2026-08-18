@@ -771,6 +771,11 @@ catch-all（計画 1 個・全パターンで誤り）と，リテラル直書�
 
 [Doma](https://docs.domaframework.org/)・[MyBatis](https://mybatis.org/mybatis-3/dynamic-sql.html)・[uroboroSQL](https://future-architect.github.io/uroborosql-doc/)（Java），[Komapper のテンプレートクエリ](https://www.komapper.org/docs/reference/query/querydsl/template/)（Kotlin），[go-twowaysql](https://github.com/future-architect/go-twowaysql)（Go），[JinjaSQL](https://github.com/sripathikrishnan/jinjasql)（Python），[HugSQL](https://www.hugsql.org/)（Clojure）などです。
 
+**【2026-08-19 追記】**
+著者自身も試験的にライブラリを作ってみました。Go で 2-way SQL を使いたい場合は，こちらも選択肢になります。
+
+[![bisql](https://private-user-images.githubusercontent.com/1351893/637572578-892e0faf-db15-447d-a5de-1409a1e1e71d.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODcwOTA5NTAsIm5iZiI6MTc4NzA5MDY1MCwicGF0aCI6Ii8xMzUxODkzLzYzNzU3MjU3OC04OTJlMGZhZi1kYjE1LTQ0N2QtYTVkZS0xNDA5YTFlMWU3MWQucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI2MDgxOCUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNjA4MThUMjIwNDEwWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NjUxM2ZhYmRmY2U0OTI0OGRkNzMwZWE5MzE0NWM1YzZhMTgzZDgxMTIyZGJlY2U1OWYyNjA5ZWRlOTFlYzI3NSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmcmVzcG9uc2UtY29udGVudC10eXBlPWltYWdlJTJGcG5nIn0.KGiveap1OJMKyI9yUuu0hemanD-V6j3c9Bo2TZhW_Q4)](https://github.com/mpyw/bisql)
+
 :::message
 **専用ライブラリは JVM 系に厚く，それ以外では薄いのが実情です。** 2-way SQL が日本の Seasar 由来という出自と無関係ではないでしょう。
 
