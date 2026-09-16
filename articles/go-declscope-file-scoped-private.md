@@ -173,6 +173,7 @@ func normalizeEmail(s string) string {
 
 ```go:user_repository.go
 //declscope:namespace user
+
 package database
 ```
 
@@ -182,6 +183,7 @@ package database
 
 ```go:client.go
 //declscope:core
+
 package transport
 
 func doSomething() int { return 1 }
@@ -282,6 +284,7 @@ query.go:6:21:  used here, in namespace "query"
 
 ```go:query.go
 //declscope:namespace statement
+
 package database
 ```
 
@@ -378,6 +381,7 @@ user_repository.go:11:6: func scanUser does not carry namespace "userRepository"
 
 ```go:user_repository.go
 //declscope:namespace user
+
 package database
 ```
 
