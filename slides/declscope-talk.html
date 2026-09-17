@@ -241,11 +241,161 @@
     tr:last-child td { border-bottom: 0; }
     td:last-child, th:last-child { text-align: right; }
 
-    .visibility-table tr:last-child td {
-      color: var(--coral);
-      background: var(--coral-soft);
-      font-weight: 850;
+    .vis-levels {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(12px, 1.7vw, 26px);
+      align-items: stretch;
     }
+
+    .vis-level {
+      display: flex;
+      flex-direction: column;
+      padding: clamp(13px, 1.5vw, 22px);
+      background: rgba(255,255,255,.86);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(20,33,61,.06);
+    }
+
+    .vis-level.absent {
+      background: var(--coral-soft);
+      border-color: #ffd0c8;
+    }
+
+    .vis-head {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .vis-name {
+      display: block;
+      margin-bottom: 3px;
+      font: 850 clamp(17px, 1.85vw, 27px)/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .vis-level.absent .vis-name { color: var(--coral); }
+
+    .vis-reach {
+      color: var(--muted);
+      font-size: clamp(12px, 1.1vw, 17px);
+      font-weight: 700;
+    }
+
+    .vis-art {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .vis-pkg {
+      position: relative;
+      padding: clamp(18px, 1.7vw, 24px) 10px 10px;
+      background: rgba(255,255,255,.72);
+      border: 2.5px solid var(--ink);
+      border-radius: 12px;
+    }
+
+    .vis-pkg::before {
+      content: attr(data-pkg);
+      position: absolute;
+      top: -10px;
+      left: 11px;
+      padding: 2px 8px;
+      color: #fff;
+      background: var(--ink);
+      border-radius: 6px;
+      font: 800 clamp(10px, .95vw, 14px)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .vis-file {
+      position: relative;
+      padding: clamp(19px, 1.8vw, 26px) 9px 9px;
+      background: #fff;
+      border: 2px solid #a9bac7;
+      border-radius: 9px;
+    }
+
+    .vis-file.target {
+      border-color: var(--coral);
+      border-style: dashed;
+      background: #fffaf8;
+    }
+
+    .vis-file::before {
+      content: attr(data-name);
+      position: absolute;
+      inset: 0 0 auto;
+      padding: 4px 8px;
+      color: #526277;
+      background: #edf2f5;
+      border-bottom: 1px solid #d8e1e6;
+      border-radius: 7px 7px 0 0;
+      font: 750 clamp(9px, .88vw, 13px)/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .vis-art code {
+      display: block;
+      font-size: clamp(11px, 1.05vw, 16px);
+      font-weight: 700;
+    }
+
+    .vis-link {
+      position: relative;
+      height: clamp(30px, 3vw, 44px);
+    }
+
+    .vis-link::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      bottom: 9px;
+      left: 50%;
+      border-left: 3px solid var(--cyan);
+      transform: translateX(-1.5px);
+    }
+
+    .vis-link::after {
+      content: "";
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      border-right: 3px solid var(--cyan);
+      border-bottom: 3px solid var(--cyan);
+      transform: translate(-50%, 0) rotate(45deg);
+    }
+
+    .vis-link.blocked::before,
+    .vis-link.blocked::after { border-color: var(--coral); }
+    .vis-link.blocked::before { border-left-style: dashed; }
+
+    .vis-tag {
+      position: absolute;
+      top: 50%;
+      left: calc(50% + 13px);
+      padding: 2px 8px;
+      border-radius: 7px;
+      font-size: clamp(10px, .95vw, 14px);
+      font-weight: 850;
+      white-space: nowrap;
+      transform: translateY(-50%);
+    }
+
+    .vis-tag.ok { color: #046b83; background: var(--cyan-soft); }
+    .vis-tag.ng { color: #b33c2f; background: #fff; border: 1px solid #ffd0c8; }
+
+    .vis-note {
+      margin: 10px 0 0;
+      font-size: clamp(11px, 1.05vw, 16px);
+      font-weight: 750;
+      line-height: 1.35;
+    }
+
+    .vis-level.absent .vis-note { color: #b33c2f; }
 
     .package-diagram {
       position: relative;
@@ -304,9 +454,9 @@
 
     .cross-arrow {
       position: absolute;
-      left: 45%;
-      top: 63%;
-      width: 28%;
+      left: 71%;
+      top: 66%;
+      width: 55%;
       height: 0;
       border-top: 4px dashed var(--coral);
       transform: rotate(180deg);
@@ -327,8 +477,8 @@
 
     .cross-label {
       position: absolute;
-      left: 47%;
-      top: 69%;
+      left: 38%;
+      top: 53%;
       padding: 4px 10px;
       color: #b33c2f;
       background: var(--coral-soft);
@@ -349,12 +499,12 @@
       font-weight: 750;
     }
 
-    #slide-3 h2 { margin-bottom: 24px; }
-    #slide-3 .card { padding-block: clamp(14px, 1.5vw, 22px); }
-    #slide-3 .card p,
-    #slide-3 .card li { font-size: clamp(14px, 1.35vw, 20px); }
-    #slide-3 .big-number { font-size: clamp(36px, 4.6vw, 66px); }
-    #slide-3 .quote {
+    #slide-5 h2 { margin-bottom: 24px; }
+    #slide-5 .card { padding-block: clamp(14px, 1.5vw, 22px); }
+    #slide-5 .card p,
+    #slide-5 .card li { font-size: clamp(14px, 1.35vw, 20px); }
+    #slide-5 .big-number { font-size: clamp(36px, 4.6vw, 66px); }
+    #slide-5 .quote {
       margin-top: 18px !important;
       padding-block: .62em;
       font-size: clamp(18px, 2vw, 29px);
@@ -374,10 +524,52 @@
       display: grid;
       grid-template-columns: 1fr auto 1fr auto 1fr;
       gap: 14px;
-      align-items: center;
+      align-items: stretch;
     }
 
+    .odds {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .odds-row {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+      padding: 9px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 11px;
+      font-size: clamp(13px, 1.25vw, 19px);
+      font-weight: 800;
+    }
+
+    .odds-row.maybe {
+      background: var(--coral-soft);
+      border-color: #ffc9be;
+      border-style: dashed;
+    }
+
+    .odds-row.sure {
+      background: var(--cyan-soft);
+      border-color: #a9e9f4;
+    }
+
+    .odds-tag {
+      padding: 2px 9px;
+      background: #fff;
+      border-radius: 99px;
+      font-size: clamp(11px, 1vw, 15px);
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .odds-row.maybe .odds-tag { color: #b33c2f; border: 1px solid #ffd0c8; }
+    .odds-row.sure .odds-tag { color: #046b83; border: 1px solid #a9e9f4; }
+
     .flow-arrow {
+      align-self: center;
       color: var(--cyan);
       font-size: clamp(25px, 3vw, 44px);
       font-weight: 900;
@@ -431,21 +623,6 @@
       font: 800 18px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
-    .rename {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 30px;
-      margin: 40px 0;
-      text-align: center;
-    }
-
-    .rename code {
-      padding: .35em .55em;
-      font-size: clamp(20px, 2.5vw, 37px);
-      font-weight: 800;
-    }
-
     .strike {
       position: relative;
       color: #8b6670;
@@ -497,6 +674,61 @@
       color: var(--coral);
       font-size: clamp(16px, 1.5vw, 22px);
       font-weight: 950;
+    }
+
+    #slide-10 h2 { margin-bottom: 12px; }
+
+    #slide-10 .lead {
+      margin-bottom: 20px;
+      color: var(--muted);
+      font-size: clamp(15px, 1.5vw, 23px);
+      font-weight: 700;
+    }
+
+    #slide-10 .card { padding-block: clamp(14px, 1.5vw, 22px); }
+    #slide-10 .card h3 { margin-bottom: 13px; font-size: clamp(18px, 1.8vw, 26px); }
+    #slide-10 .card > p { margin-bottom: 0; font-size: clamp(14px, 1.3vw, 19px); }
+
+    #slide-10 .try {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 13px;
+    }
+
+    #slide-10 .try code {
+      display: block;
+      padding: .42em .5em;
+      border-radius: 10px;
+      font-size: clamp(14px, 1.45vw, 22px);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    #slide-10 .try .directive {
+      color: #c6ef82;
+      background: var(--code);
+    }
+
+    #slide-10 .try .keep {
+      color: #046b83;
+      background: #fff;
+      border: 2px solid var(--cyan);
+    }
+
+    #slide-10 .ok-mark { color: var(--cyan); }
+
+    #slide-10 .try-step {
+      color: var(--muted);
+      font-size: clamp(12px, 1.15vw, 17px);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    #slide-10 .quote {
+      margin-top: 20px !important;
+      padding-block: .6em;
+      font-size: clamp(17px, 1.95vw, 28px);
     }
 
     #slide-11 h2 { margin-bottom: 22px; }
@@ -749,7 +981,17 @@
       .grid-2, .grid-3 { gap: 12px; }
       .card { padding: 13px; border-radius: 10px; }
       .package-diagram { min-height: 220px; padding: 28px 14px 14px; }
+      .vis-levels { gap: 8px; }
+      .vis-level { padding: 9px; border-radius: 10px; }
+      .vis-head { margin-bottom: 8px; padding-bottom: 7px; }
+      .vis-name { font-size: 15px; }
+      .vis-pkg { padding: 15px 7px 7px; border-radius: 9px; }
+      .vis-file { padding: 16px 6px 6px; border-radius: 7px; }
+      .vis-link { height: 22px; }
+      .vis-tag { padding: 1px 5px; font-size: 9px; }
+      .vis-note { margin-top: 7px; font-size: 10px; }
       .file { min-height: 135px; padding: 34px 10px 10px; }
+      .cross-label { top: 72%; left: 30%; }
       .flow .card { min-height: auto; }
       .handoff { gap: 8px; }
       .avatar { min-height: 90px; }
@@ -799,51 +1041,70 @@
     <section class="slide" id="slide-2" data-slide="02 / 14">
       <div class="kicker">The gap</div>
       <h2>Go の可視性は、ほぼ <span class="accent">2 段階</span></h2>
-      <div class="grid-2">
-        <table class="visibility-table">
-          <thead><tr><th>レベル</th><th>届く範囲</th></tr></thead>
-          <tbody>
-            <tr><td><code>Exported</code></td><td>import した全 package</td></tr>
-            <tr><td><code>unexported</code></td><td>同じ package の全 file</td></tr>
-            <tr><td>file 単位</td><td>ない</td></tr>
-          </tbody>
-        </table>
-        <div class="package-diagram">
-          <span class="package-label">package database</span>
-          <div class="files">
-            <div class="file" data-name="user_repository.go"><code>scanUser</code><code>normalizeEmail</code></div>
-            <div class="file" data-name="order_repository.go"><code>scanOrder</code><code>listOrders</code></div>
+      <div class="vis-levels">
+
+        <div class="vis-level">
+          <div class="vis-head">
+            <code class="vis-name">Exported</code>
+            <span class="vis-reach">import した全 package</span>
           </div>
+          <div class="vis-art">
+            <div class="vis-pkg" data-pkg="package api">
+              <code>db.ScanUser()</code>
+            </div>
+            <div class="vis-link"><span class="vis-tag ok">届く</span></div>
+            <div class="vis-pkg" data-pkg="package database">
+              <code>ScanUser</code>
+            </div>
+          </div>
+          <p class="vis-note">package の壁を越える。<br>大文字始まりで書くだけ。</p>
         </div>
+
+        <div class="vis-level">
+          <div class="vis-head">
+            <code class="vis-name">unexported</code>
+            <span class="vis-reach">同じ package の全ファイル</span>
+          </div>
+          <div class="vis-art">
+            <div class="vis-pkg" data-pkg="package database">
+              <div class="vis-file" data-name="order_repository.go">
+                <code>scanOrder</code>
+              </div>
+              <div class="vis-link"><span class="vis-tag ok">素通り</span></div>
+              <div class="vis-file" data-name="user_repository.go">
+                <code>scanUser</code>
+                <code class="warning">normalizeEmail</code>
+              </div>
+            </div>
+          </div>
+          <p class="vis-note">ファイルの壁は越え放題。<br>コンパイラは何も言わない。</p>
+        </div>
+
+        <div class="vis-level absent">
+          <div class="vis-head">
+            <span class="vis-name">ファイル単位</span>
+            <span class="vis-reach">この段階は <strong class="warning">存在しない</strong></span>
+          </div>
+          <div class="vis-art">
+            <div class="vis-pkg" data-pkg="package database">
+              <div class="vis-file" data-name="order_repository.go">
+                <code>scanOrder</code>
+              </div>
+              <div class="vis-link blocked"><span class="vis-tag ng">✕ 止めたい</span></div>
+              <div class="vis-file target" data-name="user_repository.go">
+                <code>scanUser</code>
+                <code class="warning">normalizeEmail</code>
+              </div>
+            </div>
+          </div>
+          <p class="vis-note">ファイル単位の private は、<br>Go には無い。</p>
+        </div>
+
       </div>
       <p class="footer">unexported ≠ このファイルだけ</p>
     </section>
 
     <section class="slide" id="slide-3" data-slide="03 / 14">
-      <div class="kicker">Trade-off</div>
-      <h2>だからといって、package を割れば<br>終わりでもない</h2>
-      <div class="grid-2">
-        <div class="card cyan">
-          <span class="big-number">単一</span>
-          <h3>フラットに保つ</h3>
-          <p>依存は素直。ただし <strong class="warning">package 内の全宣言が互いに見える。</strong></p>
-        </div>
-        <div class="card coral">
-          <span class="big-number" style="color:var(--coral)">複数</span>
-          <h3>細かく分ける</h3>
-          <ul>
-            <li>循環参照</li>
-            <li>共有名の export</li>
-            <li><code>internal/</code> の階層</li>
-            <li>境界を動かすコスト</li>
-          </ul>
-        </div>
-      </div>
-      <p class="quote" style="margin-top:28px">欲しいのは package 分割ではなく、<span class="accent">その内側にある軽い境界</span></p>
-    </section>
-
-
-    <section class="slide" id="slide-4" data-slide="04 / 14">
       <div class="kicker">Invisible ownership</div>
       <h2>暗黙の所有権は、コードから見えない</h2>
       <div class="package-diagram">
@@ -862,21 +1123,56 @@
         <div class="cross-arrow" aria-hidden="true"></div>
         <div class="cross-label">コンパイルは通る</div>
       </div>
-      <p class="quote" style="margin-top:24px">「この helper は、この file のもの」—— コンパイラは知らない</p>
+      <p class="quote" style="margin-top:24px">「この helper は、このファイルのもの」—— コンパイラは知らない</p>
     </section>
 
 
-    <section class="slide" id="slide-5" data-slide="05 / 14">
+    <section class="slide" id="slide-4" data-slide="04 / 14">
       <div class="kicker">Agentic coding</div>
       <h2>AI は規約を破るというより、<br><span class="accent">見える API を使う</span></h2>
       <div class="flow">
         <div class="card"><h3>規約を書く</h3><p><code>CLAUDE.md</code><br>コメント<br>レビュー文化</p></div>
         <div class="flow-arrow">→</div>
-        <div class="card"><h3>見えるものを使う</h3><p>helper を呼ぶ<br>field を書く<br>compile は成功</p></div>
+        <div class="card">
+          <h3>AI が見るもの</h3>
+          <div class="odds">
+            <div class="odds-row maybe">
+              コメントの規約
+              <span class="odds-tag">一定確率で読む</span>
+            </div>
+            <div class="odds-row sure">
+              見える宣言
+              <span class="odds-tag">必ず見える</span>
+            </div>
+          </div>
+        </div>
         <div class="flow-arrow">→</div>
-        <div class="card coral"><h3>負債も高速化</h3><p>生成が速いぶん、曖昧な境界も速く崩れる</p></div>
+        <div class="card coral"><h3>負債も高速化</h3><p>生成が速いぶん、<br>曖昧な境界も速く崩れる</p></div>
       </div>
-      <p class="quote" style="margin-top:34px">自然言語の規約は効く。でも、守られたかの判定は<span class="warning">確率的</span></p>
+      <p class="quote" style="margin-top:34px">自然言語の規約は効く。でも、守られるかどうかは<span class="warning">確率的</span></p>
+    </section>
+
+
+    <section class="slide" id="slide-5" data-slide="05 / 14">
+      <div class="kicker">Trade-off</div>
+      <h2>だからといって、package を割れば<br>終わりでもない</h2>
+      <div class="grid-2">
+        <div class="card cyan">
+          <span class="big-number">単一</span>
+          <h3>フラットに保つ</h3>
+          <p>依存は素直。ただし <strong class="warning">package 内の全宣言が互いに見える。</strong></p>
+        </div>
+        <div class="card coral">
+          <span class="big-number" style="color:var(--coral)">複数</span>
+          <h3>細かく分ける</h3>
+          <ul>
+            <li>循環参照</li>
+            <li><code>internal/</code> の階層</li>
+            <li>リファクタリングで<br>境界を変更するコスト</li>
+          </ul>
+        </div>
+      </div>
+      <p class="quote" style="margin-top:28px">欲しいのは package 分割ではなく、<span class="accent">その内側にある軽い境界</span></p>
     </section>
 
 
@@ -886,7 +1182,7 @@
       <div class="rule-pair">
         <article class="rule-card" data-letter="B">
           <h3><code>boundary</code></h3>
-          <p class="question">この file から、あの宣言に<br>触ってよいか？</p>
+          <p class="question">この namespace から<br>あの namespace のものに<br>触ってよいか？</p>
           <pre><span class="code-bad">orderRepository</span>
   → normalizeEmail
      in <span class="code-good">userRepository</span></pre>
@@ -910,7 +1206,7 @@
       <div class="grid-2">
         <div class="card cyan">
           <span class="big-number">01</span>
-          <h3>file 名が namespace</h3>
+          <h3>ファイル名が namespace</h3>
           <p><code>user_repository.go</code></p>
           <p class="large">↓</p>
           <p><code>userRepository</code></p>
@@ -954,7 +1250,7 @@ func normalizeEmail(s string) string</pre>
 
     <section class="slide" id="slide-9" data-slide="09 / 14">
       <div class="kicker">Shared namespace</div>
-      <h2>複数 file で 1 つの関心なら、束ねられる</h2>
+      <h2>複数ファイルで 1 つの namespace に<br>まとめても OK</h2>
       <div class="grid-2">
         <pre><span class="code-good">//declscope:namespace statement</span>
 
@@ -968,36 +1264,41 @@ func (s *Statement) Where(...) { ... }</pre>
           </div>
         </div>
       </div>
-      <p class="large" style="margin-top:28px">物理 file を出発点にしつつ、<strong>実際の関心範囲</strong>へ合わせられる。</p>
+      <p class="large" style="margin-top:28px">物理ファイルを出発点にしつつ、<strong>実際の関心範囲</strong>へ合わせられる。</p>
     </section>
 
 
     <section class="slide" id="slide-10" data-slide="10 / 14">
       <div class="kicker">Qualify rule</div>
-      <h2><code>qualify</code> は「名前を長くしろ」ではない</h2>
-      <div class="rename">
-        <code>scanUser</code>
-        <span class="flow-arrow">→</span>
-        <code class="strike">userRepositoryScanUser</code>
-      </div>
+      <h2><code>qualify</code> は、シンボル名のどこかに<br><span class="accent">namespace が含まれること</span>を要求する</h2>
+      <p class="lead">デフォルトではプレフィクスを提案するが、そのまま従う必要はない。直す場所は 2 つある。</p>
       <div class="grid-2">
         <div class="card coral">
-          <h3>機械提案どおり rename？</h3>
-          <p>自動修正提案では namespace がプレフィクスになる。でも、名前が不自然。</p>
+          <h3>A. 名前のほうを直す</h3>
+          <div class="try">
+            <code>scanUser</code>
+            <span class="try-step">↓ namespace をプレフィクスに</span>
+            <code class="strike">userRepositoryScanUser</code>
+          </div>
+          <p>これが自動修正の提案。でも、<strong class="warning">名前が不自然。</strong></p>
         </div>
         <div class="card cyan">
-          <h3>namespace のほうを見直す</h3>
-          <pre><span class="code-good">//declscope:namespace user</span></pre>
-          <p><code>scanUser</code> が自然に収まる。</p>
+          <h3>B. namespace のほうを直す</h3>
+          <div class="try">
+            <code class="directive">//declscope:namespace user</code>
+            <span class="try-step">↓ 置き場所のほうを宣言</span>
+            <code class="keep">scanUser <span class="ok-mark">✓</span></code>
+          </div>
+          <p>すでに <code>user</code> を含んでいる。<strong>名前は変えなくてよい。</strong></p>
         </div>
       </div>
-      <p class="quote" style="margin-top:24px">問われているのは、<strong>その名前と置き場所が噛み合っているか</strong></p>
+      <p class="quote">問われているのは、<strong>その名前と置き場所が噛み合っているか</strong></p>
     </section>
 
 
     <section class="slide" id="slide-11" data-slide="11 / 14">
       <div class="kicker">Case study: spf13/cobra</div>
-      <h2>最も古い file だけ、<span class="warning">リネームを忘れていた</span></h2>
+      <h2>最も古いファイルだけ、<span class="warning">リネームを忘れていた</span></h2>
       <div class="grid-2">
         <div class="card cyan">
           <h3>ほかの completion generators</h3>
@@ -1018,7 +1319,7 @@ gen<span class="code-good">Bash</span>Comp <span class="code-comment">// V2</spa
         </div>
       </div>
       <p class="quote" style="margin-top:20px">「<code>scan</code> は 1 つしか置けない」が、実在 OSS でも起きていた。</p>
-      <p class="footer">spf13/cobra: 14 files / 6,138 lines、開始時 boundary 35 / qualify 119 → 最終 0 / 0</p>
+      <p class="footer">spf13/cobra: 14 ファイル / 6,138 行、開始時 boundary 35 / qualify 119 → 最終 0 / 0</p>
     </section>
 
 
@@ -1053,7 +1354,7 @@ gen<span class="code-good">Bash</span>Comp <span class="code-comment">// V2</spa
       <div class="kicker">Takeaways</div>
       <h2>フラットさを保ったまま、<br><span class="accent">内側の境界を検査する</span></h2>
       <div class="summary-list">
-        <div class="summary-item"><span class="check">✓</span><span>Go には file 単位の private がない</span></div>
+        <div class="summary-item"><span class="check">✓</span><span>Go にはファイル単位の private がない</span></div>
         <div class="summary-item"><span class="check">✓</span><span>暗黙の所有は、人にも AI にも見えにくい</span></div>
         <div class="summary-item"><span class="check">✓</span><span>declscope は越境を決定論的に検査する</span></div>
         <div class="summary-item"><span class="check">✓</span><span>答えは「守る」か「共有を宣言する」</span></div>
