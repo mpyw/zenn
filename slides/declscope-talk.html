@@ -1,0 +1,1129 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Go のフラットなパッケージに「ファイル単位の private」を</title>
+  <style>
+    :root {
+      --ink: #14213d;
+      --muted: #5d6b82;
+      --paper: #fbfaf6;
+      --panel: #ffffff;
+      --cyan: #00add8;
+      --cyan-soft: #dcf7fd;
+      --coral: #f26a5a;
+      --coral-soft: #fff0ec;
+      --lime: #b9df6a;
+      --line: #dbe3e8;
+      --code: #10192c;
+      --shadow: 0 24px 70px rgba(21, 42, 72, .16);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: #dfe7eb;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+      font-feature-settings: "palt";
+      line-height: 1.48;
+    }
+
+    .deck {
+      display: grid;
+      gap: 48px;
+      justify-items: center;
+      padding: 48px 0 92px;
+    }
+
+    .slide {
+      position: relative;
+      width: min(96vw, 1280px);
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      padding: clamp(34px, 4.3vw, 72px) clamp(44px, 5.2vw, 88px);
+      background:
+        radial-gradient(circle at 92% 12%, rgba(0, 173, 216, .13), transparent 24%),
+        linear-gradient(135deg, rgba(255,255,255,.96), rgba(251,250,246,.96));
+      border: 1px solid rgba(20, 33, 61, .08);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      break-after: page;
+      page-break-after: always;
+      isolation: isolate;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 9px;
+      background: linear-gradient(var(--cyan), #70d3e8);
+      z-index: -1;
+    }
+
+    .slide::after {
+      content: attr(data-slide);
+      position: absolute;
+      right: 34px;
+      bottom: 22px;
+      color: #8a98a9;
+      font: 700 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .08em;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 1050px;
+      margin-bottom: 26px;
+      font-size: clamp(38px, 5vw, 72px);
+      line-height: 1.16;
+      letter-spacing: -.045em;
+    }
+
+    h2 {
+      margin-bottom: clamp(24px, 3vw, 44px);
+      font-size: clamp(29px, 3.5vw, 50px);
+      line-height: 1.18;
+      letter-spacing: -.035em;
+    }
+
+    h3 {
+      margin-bottom: 12px;
+      font-size: clamp(20px, 2.1vw, 30px);
+      line-height: 1.25;
+    }
+
+    p, li, td, th {
+      font-size: clamp(16px, 1.6vw, 25px);
+    }
+
+    ul { margin: 0; padding-left: 1.2em; }
+    li { margin: .42em 0; }
+    li::marker { color: var(--cyan); }
+
+    strong { color: var(--ink); }
+    .accent { color: #008bb0; }
+    .warning { color: var(--coral); }
+    .muted { color: var(--muted); }
+    .small { font-size: clamp(12px, 1vw, 16px); }
+    .large { font-size: clamp(24px, 2.6vw, 38px); line-height: 1.35; }
+    .nowrap { white-space: nowrap; }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 18px;
+      color: #007f9f;
+      font-size: clamp(13px, 1.2vw, 18px);
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .kicker::before {
+      content: "";
+      width: 28px;
+      height: 4px;
+      border-radius: 99px;
+      background: var(--cyan);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: clamp(20px, 2.1vw, 30px);
+      font-weight: 650;
+    }
+
+    .footer {
+      position: absolute;
+      left: clamp(44px, 5.2vw, 88px);
+      bottom: 20px;
+      color: #7d8b9d;
+      font-size: 13px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(22px, 3vw, 46px);
+      align-items: stretch;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(16px, 2vw, 28px);
+    }
+
+    .card {
+      padding: clamp(18px, 2vw, 30px);
+      background: rgba(255,255,255,.86);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(20,33,61,.06);
+    }
+
+    .card.cyan { background: var(--cyan-soft); border-color: #a9e9f4; }
+    .card.coral { background: var(--coral-soft); border-color: #ffd0c8; }
+    .card.dark { color: #eef7ff; background: var(--code); border-color: #263553; }
+    .card.dark h3, .card.dark strong { color: #fff; }
+
+    .big-number {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--cyan);
+      font: 900 clamp(42px, 6vw, 86px)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-variant-ligatures: none;
+    }
+
+    :not(pre) > code {
+      padding: .08em .28em;
+      color: #045e77;
+      background: #e7f7fb;
+      border-radius: .25em;
+      font-size: .9em;
+    }
+
+    pre {
+      margin: 0;
+      padding: clamp(18px, 2vw, 28px);
+      overflow: hidden;
+      color: #eaf3ff;
+      background: var(--code);
+      border: 1px solid #263553;
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgba(16,25,44,.16);
+      font-size: clamp(13px, 1.25vw, 19px);
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .code-comment { color: #7e91ad; }
+    .code-key { color: #77d8ee; }
+    .code-bad { color: #ff8d7f; font-weight: 800; }
+    .code-good { color: #c6ef82; font-weight: 800; }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      background: rgba(255,255,255,.86);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+
+    th, td {
+      padding: .62em .8em;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      color: #36506c;
+      background: #edf6f8;
+      font-weight: 800;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td:last-child, th:last-child { text-align: right; }
+
+    .visibility-table tr:last-child td {
+      color: var(--coral);
+      background: var(--coral-soft);
+      font-weight: 850;
+    }
+
+    .package-diagram {
+      position: relative;
+      min-height: 310px;
+      padding: 38px 28px 24px;
+      border: 3px solid var(--ink);
+      border-radius: 22px;
+      background: rgba(255,255,255,.7);
+    }
+
+    .package-label {
+      position: absolute;
+      top: -16px;
+      left: 26px;
+      padding: 3px 13px;
+      color: white;
+      background: var(--ink);
+      border-radius: 8px;
+      font: 800 18px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .files {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      height: 100%;
+    }
+
+    .file {
+      position: relative;
+      min-height: 190px;
+      padding: 48px 18px 18px;
+      background: white;
+      border: 2px solid #a9bac7;
+      border-radius: 13px;
+      box-shadow: 0 8px 18px rgba(20,33,61,.09);
+    }
+
+    .file::before {
+      content: attr(data-name);
+      position: absolute;
+      inset: 0 0 auto;
+      padding: 10px 14px;
+      color: #526277;
+      background: #edf2f5;
+      border-bottom: 1px solid #d8e1e6;
+      border-radius: 11px 11px 0 0;
+      font: 750 clamp(12px, 1.1vw, 16px)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .file code {
+      display: block;
+      margin: 11px 0;
+      font-size: clamp(12px, 1.15vw, 17px);
+    }
+
+    .cross-arrow {
+      position: absolute;
+      left: 45%;
+      top: 63%;
+      width: 28%;
+      height: 0;
+      border-top: 4px dashed var(--coral);
+      transform: rotate(180deg);
+      transform-origin: left;
+    }
+
+    .cross-arrow::after {
+      content: "";
+      position: absolute;
+      right: -1px;
+      top: -9px;
+      width: 14px;
+      height: 14px;
+      border-top: 4px solid var(--coral);
+      border-right: 4px solid var(--coral);
+      transform: rotate(45deg);
+    }
+
+    .cross-label {
+      position: absolute;
+      left: 47%;
+      top: 69%;
+      padding: 4px 10px;
+      color: #b33c2f;
+      background: var(--coral-soft);
+      border-radius: 8px;
+      font-size: clamp(12px, 1vw, 15px);
+      font-weight: 800;
+    }
+
+    .quote {
+      margin: 0;
+      padding: .8em 1em;
+      color: #31415b;
+      background: white;
+      border-left: 7px solid var(--cyan);
+      border-radius: 0 14px 14px 0;
+      box-shadow: 0 10px 25px rgba(20,33,61,.07);
+      font-size: clamp(22px, 2.5vw, 37px);
+      font-weight: 750;
+    }
+
+    #slide-3 h2 { margin-bottom: 24px; }
+    #slide-3 .card { padding-block: clamp(14px, 1.5vw, 22px); }
+    #slide-3 .card p,
+    #slide-3 .card li { font-size: clamp(14px, 1.35vw, 20px); }
+    #slide-3 .big-number { font-size: clamp(36px, 4.6vw, 66px); }
+    #slide-3 .quote {
+      margin-top: 18px !important;
+      padding-block: .62em;
+      font-size: clamp(18px, 2vw, 29px);
+    }
+
+    .terminal-label {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 5px 12px;
+      color: #b8c6d9;
+      background: #24324d;
+      border-radius: 99px;
+      font: 700 13px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .flow-arrow {
+      color: var(--cyan);
+      font-size: clamp(25px, 3vw, 44px);
+      font-weight: 900;
+    }
+
+    .flow .card { min-height: 180px; }
+
+    .pill {
+      display: inline-block;
+      margin: 4px 5px 4px 0;
+      padding: 6px 12px;
+      color: #24526a;
+      background: #e4f5f9;
+      border: 1px solid #b5e4ed;
+      border-radius: 99px;
+      font-size: clamp(12px, 1.05vw, 16px);
+      font-weight: 750;
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 1fr 74px 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .decision .or {
+      display: grid;
+      place-items: center;
+      color: #728196;
+      font-weight: 900;
+    }
+
+    .namespace-frame {
+      position: relative;
+      padding: 48px 24px 24px;
+      border: 4px dashed var(--cyan);
+      border-radius: 24px;
+      background: rgba(220,247,253,.5);
+    }
+
+    .namespace-frame::before {
+      content: attr(data-namespace);
+      position: absolute;
+      left: 24px;
+      top: -18px;
+      padding: 5px 16px;
+      color: white;
+      background: var(--cyan);
+      border-radius: 9px;
+      font: 800 18px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .rename {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 30px;
+      margin: 40px 0;
+      text-align: center;
+    }
+
+    .rename code {
+      padding: .35em .55em;
+      font-size: clamp(20px, 2.5vw, 37px);
+      font-weight: 800;
+    }
+
+    .strike {
+      position: relative;
+      color: #8b6670;
+      background: var(--coral-soft) !important;
+    }
+
+    .strike::after {
+      content: "";
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      top: 50%;
+      border-top: 4px solid var(--coral);
+      transform: rotate(-5deg);
+    }
+
+    .metric-table td:nth-child(n+2), .metric-table th:nth-child(n+2) { text-align: right; }
+    .metric-table tr:last-child td { color: #087d62; background: #eefbea; font-weight: 900; }
+
+    .symbol-renames {
+      display: grid;
+      gap: 12px;
+      margin: 16px 0 18px;
+    }
+    .symbol-rename {
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) auto minmax(0, 1.45fr);
+      gap: 11px;
+      align-items: center;
+    }
+    .symbol-rename code {
+      padding: 7px 9px;
+      font-size: clamp(12px, 1.05vw, 16px);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .symbol-rename .before {
+      color: #a23d32;
+      background: #fff4f1;
+      text-decoration: line-through 1.5px var(--coral);
+      text-decoration-skip-ink: none;
+    }
+    .symbol-rename .after {
+      color: #075d74;
+      background: #e5f7fb;
+      border: 1px solid #a9e9f4;
+    }
+    .symbol-rename .arrow {
+      color: var(--coral);
+      font-size: clamp(16px, 1.5vw, 22px);
+      font-weight: 950;
+    }
+
+    #slide-11 h2 { margin-bottom: 22px; }
+    #slide-11 .metric-table th,
+    #slide-11 .metric-table td {
+      padding: .42em .68em;
+      font-size: clamp(14px, 1.3vw, 19px);
+    }
+    #slide-11 .grid-2 { margin-top: 16px !important; gap: 20px; }
+    #slide-11 .card { padding: 15px 20px; }
+    #slide-11 .card h3 { margin-bottom: 5px; font-size: clamp(18px, 1.7vw, 24px); }
+    #slide-11 .card p { margin-bottom: 0; font-size: clamp(14px, 1.25vw, 18px); }
+
+    .handoff {
+      display: grid;
+      grid-template-columns: 1fr auto 1.4fr auto 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-top: 44px;
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      min-height: 150px;
+      padding: 20px;
+      text-align: center;
+      background: white;
+      border: 2px solid var(--line);
+      border-radius: 24px;
+      font-size: clamp(18px, 1.8vw, 27px);
+      font-weight: 800;
+    }
+
+    .source {
+      min-height: 200px;
+      padding: 24px;
+      color: var(--ink);
+      background: #ffffff;
+      border: 3px solid var(--ink);
+      border-radius: 20px;
+      box-shadow: 0 15px 32px rgba(16,25,44,.12);
+    }
+
+    .source strong { color: var(--ink); }
+    .source code {
+      display: block;
+      margin: 14px 0;
+      padding: 0;
+      color: #075d74;
+      background: transparent;
+      font-size: clamp(14px, 1.3vw, 19px);
+      font-weight: 800;
+    }
+    .source .source-caption {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 7px 10px;
+      color: var(--ink);
+      background: #e7f7fb;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      font-size: clamp(13px, 1.1vw, 17px);
+      font-weight: 850;
+    }
+
+    .summary-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px 24px;
+      margin-top: 28px;
+    }
+
+    .summary-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 16px 18px;
+      background: rgba(255,255,255,.82);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      font-size: clamp(15px, 1.35vw, 21px);
+      font-weight: 700;
+    }
+
+    .check {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 29px;
+      height: 29px;
+      color: white;
+      background: var(--cyan);
+      border-radius: 50%;
+      font-size: 18px;
+    }
+
+    .url-box {
+      display: inline-block;
+      margin-top: 26px;
+      padding: 12px 20px;
+      color: white;
+      background: var(--ink);
+      border-radius: 12px;
+      font: 750 clamp(16px, 1.6vw, 24px)/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .rings {
+      display: grid;
+      place-items: center;
+      min-height: 420px;
+    }
+
+    .ring {
+      display: grid;
+      place-items: center;
+      border: 4px solid;
+      border-radius: 32px;
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .ring.outer { width: 100%; height: 400px; border-color: #aab5c1; background: #f2f4f4; }
+    .ring.middle { width: 76%; height: 285px; border-color: var(--cyan); background: var(--cyan-soft); }
+    .ring.inner { width: 64%; height: 165px; border-color: var(--coral); background: var(--coral-soft); }
+    .ring span { display: block; color: var(--muted); font-size: .65em; font-weight: 700; }
+
+    .rule-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(22px, 3vw, 42px);
+      margin-top: 12px;
+    }
+
+    .rule-card {
+      position: relative;
+      min-height: 330px;
+      padding: clamp(24px, 2.7vw, 40px);
+      overflow: hidden;
+      background: white;
+      border: 2px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 14px 32px rgba(20,33,61,.08);
+    }
+
+    .rule-card::after {
+      content: attr(data-letter);
+      position: absolute;
+      right: 18px;
+      bottom: -30px;
+      color: rgba(0,173,216,.09);
+      font: 950 170px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .rule-card.qualify::after { color: rgba(242,106,90,.09); }
+    .rule-card h3 { font-size: clamp(28px, 3vw, 43px); }
+    .rule-card .question { min-height: 2.8em; font-size: clamp(18px, 1.8vw, 27px); font-weight: 800; }
+    .rule-card .default {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 5px 11px;
+      color: #12657d;
+      background: var(--cyan-soft);
+      border-radius: 99px;
+      font-size: clamp(12px, 1vw, 15px);
+      font-weight: 800;
+    }
+    .rule-card.qualify .default { color: #9b4035; background: var(--coral-soft); }
+
+    .original-boundaries {
+      display: block;
+      width: 100%;
+      height: 390px;
+      object-fit: contain;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      box-shadow: 0 10px 28px rgba(20,33,61,.08);
+    }
+
+    .title-slide {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background:
+        linear-gradient(115deg, rgba(251,250,246,.98) 0 64%, transparent 64%),
+        repeating-linear-gradient(135deg, #00add8 0 28px, #0e9cc1 28px 56px);
+    }
+
+    .title-slide::before { width: 0; }
+    .title-slide::after { color: rgba(255,255,255,.7); }
+    .title-slide .lock {
+      display: grid;
+      place-items: center;
+      position: absolute;
+      right: 7.2%;
+      top: 50%;
+      width: clamp(150px, 18vw, 255px);
+      aspect-ratio: 1;
+      transform: translateY(-50%) rotate(-5deg);
+      color: white;
+      background: rgba(20,33,61,.92);
+      border: 8px solid rgba(255,255,255,.6);
+      border-radius: 36px;
+      box-shadow: 0 24px 50px rgba(20,33,61,.25);
+      font-size: clamp(64px, 9vw, 128px);
+    }
+
+    .title-slide .meta {
+      margin-top: 36px;
+      color: var(--muted);
+      font-size: clamp(15px, 1.3vw, 20px);
+      font-weight: 700;
+    }
+
+    .notes { display: none; }
+
+    .screen-help {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 10;
+      padding: 9px 13px;
+      color: rgba(255,255,255,.9);
+      background: rgba(20,33,61,.86);
+      border-radius: 10px;
+      font-size: 12px;
+      box-shadow: 0 8px 22px rgba(20,33,61,.25);
+    }
+
+    .progress {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 20;
+      height: 5px;
+      background: rgba(255,255,255,.45);
+    }
+
+    .progress > i {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--cyan);
+      transition: width .2s ease;
+    }
+
+    @media (max-width: 760px) {
+      .deck { gap: 20px; padding: 20px 0 60px; }
+      .slide { border-radius: 8px; }
+      .grid-2, .grid-3 { gap: 12px; }
+      .card { padding: 13px; border-radius: 10px; }
+      .package-diagram { min-height: 220px; padding: 28px 14px 14px; }
+      .file { min-height: 135px; padding: 34px 10px 10px; }
+      .flow .card { min-height: auto; }
+      .handoff { gap: 8px; }
+      .avatar { min-height: 90px; }
+      .source { min-height: 130px; padding: 12px; }
+    }
+
+    @page {
+      size: 13.333in 7.5in;
+      margin: 0;
+    }
+
+    @media print {
+      html, body { background: white; }
+      .deck { display: block; padding: 0; }
+      .slide {
+        width: 13.333in;
+        height: 7.5in;
+        padding: .52in .68in;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        break-inside: avoid;
+        break-after: page;
+        page-break-inside: avoid;
+        page-break-after: always;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .slide:last-child { break-after: auto; page-break-after: auto; }
+      .screen-help, .progress { display: none !important; }
+      .footer { left: .68in; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" aria-hidden="true"><i></i></div>
+  <main class="deck">
+    <section class="slide title-slide" id="slide-1" data-slide="01 / 14">
+      <div class="kicker">Go × Static Analysis × AI</div>
+      <h1>Go のフラットな<br>パッケージに<br><span class="accent">「ファイル単位の private」</span>を</h1>
+      <p class="subtitle">Linter “declscope” を作った話</p>
+      <p class="meta">mpyw / Accenture Japan Ltd　　2026</p>
+      <div class="lock" aria-hidden="true">🔒</div>
+      <aside class="notes">今日は Go のパッケージを細かく分けずに、パッケージの内側へ境界を持ち込む話です。</aside>
+    </section>
+
+    <section class="slide" id="slide-2" data-slide="02 / 14">
+      <div class="kicker">The gap</div>
+      <h2>Go の可視性は、ほぼ <span class="accent">2 段階</span></h2>
+      <div class="grid-2">
+        <table class="visibility-table">
+          <thead><tr><th>レベル</th><th>届く範囲</th></tr></thead>
+          <tbody>
+            <tr><td><code>Exported</code></td><td>import した全 package</td></tr>
+            <tr><td><code>unexported</code></td><td>同じ package の全 file</td></tr>
+            <tr><td>file 単位</td><td>ない</td></tr>
+          </tbody>
+        </table>
+        <div class="package-diagram">
+          <span class="package-label">package database</span>
+          <div class="files">
+            <div class="file" data-name="user_repository.go"><code>scanUser</code><code>normalizeEmail</code></div>
+            <div class="file" data-name="order_repository.go"><code>scanOrder</code><code>listOrders</code></div>
+          </div>
+        </div>
+      </div>
+      <p class="footer">unexported ≠ このファイルだけ</p>
+    </section>
+
+    <section class="slide" id="slide-3" data-slide="03 / 14">
+      <div class="kicker">Trade-off</div>
+      <h2>だからといって、package を割れば<br>終わりでもない</h2>
+      <div class="grid-2">
+        <div class="card cyan">
+          <span class="big-number">単一</span>
+          <h3>フラットに保つ</h3>
+          <p>依存は素直。ただし <strong class="warning">package 内の全宣言が互いに見える。</strong></p>
+        </div>
+        <div class="card coral">
+          <span class="big-number" style="color:var(--coral)">複数</span>
+          <h3>細かく分ける</h3>
+          <ul>
+            <li>循環参照</li>
+            <li>共有名の export</li>
+            <li><code>internal/</code> の階層</li>
+            <li>境界を動かすコスト</li>
+          </ul>
+        </div>
+      </div>
+      <p class="quote" style="margin-top:28px">欲しいのは package 分割ではなく、<span class="accent">その内側にある軽い境界</span></p>
+    </section>
+
+
+    <section class="slide" id="slide-4" data-slide="04 / 14">
+      <div class="kicker">Invisible ownership</div>
+      <h2>暗黙の所有権は、コードから見えない</h2>
+      <div class="package-diagram">
+        <span class="package-label">package database</span>
+        <div class="files">
+          <div class="file" data-name="user_repository.go">
+            <code>func scanUser(...) { ... }</code>
+            <code class="warning">func normalizeEmail(...) { ... }</code>
+          </div>
+          <div class="file" data-name="order_repository.go">
+            <code>func scanOrder(...) {</code>
+            <code>　email = normalizeEmail(email)</code>
+            <code>}</code>
+          </div>
+        </div>
+        <div class="cross-arrow" aria-hidden="true"></div>
+        <div class="cross-label">コンパイルは通る</div>
+      </div>
+      <p class="quote" style="margin-top:24px">「この helper は、この file のもの」—— コンパイラは知らない</p>
+    </section>
+
+
+    <section class="slide" id="slide-5" data-slide="05 / 14">
+      <div class="kicker">Agentic coding</div>
+      <h2>AI は規約を破るというより、<br><span class="accent">見える API を使う</span></h2>
+      <div class="flow">
+        <div class="card"><h3>規約を書く</h3><p><code>CLAUDE.md</code><br>コメント<br>レビュー文化</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="card"><h3>見えるものを使う</h3><p>helper を呼ぶ<br>field を書く<br>compile は成功</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="card coral"><h3>負債も高速化</h3><p>生成が速いぶん、曖昧な境界も速く崩れる</p></div>
+      </div>
+      <p class="quote" style="margin-top:34px">自然言語の規約は効く。でも、守られたかの判定は<span class="warning">確率的</span></p>
+    </section>
+
+
+    <section class="slide" id="slide-6" data-slide="06 / 14">
+      <div class="kicker">What declscope guards</div>
+      <h2>declscope が守るのは、<span class="accent">2 種類の境界</span></h2>
+      <div class="rule-pair">
+        <article class="rule-card" data-letter="B">
+          <h3><code>boundary</code></h3>
+          <p class="question">この file から、あの宣言に<br>触ってよいか？</p>
+          <pre><span class="code-bad">orderRepository</span>
+  → normalizeEmail
+     in <span class="code-good">userRepository</span></pre>
+          <span class="default">既定で ON</span>
+        </article>
+        <article class="rule-card qualify" data-letter="Q">
+          <h3><code>qualify</code></h3>
+          <p class="question">シンボルに namespace を含めて<br>識別性を確保しているか？</p>
+          <pre><span class="code-bad">scan</span>       → 誰の？
+<span class="code-good">scanUser</span>   → user のもの</pre>
+          <span class="default">既定は OFF・ON 推奨</span>
+        </article>
+      </div>
+      <p class="footer"><code>boundary</code> は利用関係、<code>qualify</code> は名前と置き場所を検査する。</p>
+    </section>
+
+
+    <section class="slide" id="slide-7" data-slide="07 / 14">
+      <div class="kicker">Only two concepts</div>
+      <h2>覚えることは <span class="accent">2 つだけ</span></h2>
+      <div class="grid-2">
+        <div class="card cyan">
+          <span class="big-number">01</span>
+          <h3>file 名が namespace</h3>
+          <p><code>user_repository.go</code></p>
+          <p class="large">↓</p>
+          <p><code>userRepository</code></p>
+        </div>
+        <div class="card">
+          <span class="big-number">02</span>
+          <h3>scope は 2 種類</h3>
+          <table>
+            <tbody>
+              <tr><td><code>private</code></td><td>自分の namespace</td></tr>
+              <tr><td><code>package</code></td><td>package 内のどこでも</td></tr>
+            </tbody>
+          </table>
+          <p class="small muted" style="margin-top:14px">public は Go の Exported がすでに担当。</p>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="slide" id="slide-8" data-slide="08 / 14">
+      <div class="kicker">Boundary rule</div>
+      <h2><code>boundary</code> 違反への答えは、必ず 2 つ</h2>
+      <div class="decision">
+        <div class="card cyan">
+          <span class="big-number">A</span>
+          <h3>境界を守る</h3>
+          <p>使用箇所や宣言を同一 namespace に移す。</p>
+          <span class="pill">move usage</span><span class="pill">move declaration</span>
+        </div>
+        <div class="or">OR</div>
+        <div class="card coral">
+          <span class="big-number" style="color:var(--coral)">B</span>
+          <h3>共有を宣言する</h3>
+          <pre><span class="code-good">//declscope:package</span>
+func normalizeEmail(s string) string</pre>
+        </div>
+      </div>
+      <p class="quote" style="margin-top:28px"><code>email.go</code> に移し、<strong>共有物だという判断</strong>をソースへ残す</p>
+    </section>
+
+
+    <section class="slide" id="slide-9" data-slide="09 / 14">
+      <div class="kicker">Shared namespace</div>
+      <h2>複数 file で 1 つの関心なら、束ねられる</h2>
+      <div class="grid-2">
+        <pre><span class="code-good">//declscope:namespace statement</span>
+
+package database
+
+func (s *Statement) Where(...) { ... }</pre>
+        <div class="namespace-frame" data-namespace="namespace: statement">
+          <div class="files">
+            <div class="file" data-name="statement.go"><code>type Statement</code><code>wheres []string</code><code>args []any</code></div>
+            <div class="file" data-name="query.go"><code>func (*Statement)</code><code>Where(...)</code></div>
+          </div>
+        </div>
+      </div>
+      <p class="large" style="margin-top:28px">物理 file を出発点にしつつ、<strong>実際の関心範囲</strong>へ合わせられる。</p>
+    </section>
+
+
+    <section class="slide" id="slide-10" data-slide="10 / 14">
+      <div class="kicker">Qualify rule</div>
+      <h2><code>qualify</code> は「名前を長くしろ」ではない</h2>
+      <div class="rename">
+        <code>scanUser</code>
+        <span class="flow-arrow">→</span>
+        <code class="strike">userRepositoryScanUser</code>
+      </div>
+      <div class="grid-2">
+        <div class="card coral">
+          <h3>機械提案どおり rename？</h3>
+          <p>自動修正提案では namespace がプレフィクスになる。でも、名前が不自然。</p>
+        </div>
+        <div class="card cyan">
+          <h3>namespace のほうを見直す</h3>
+          <pre><span class="code-good">//declscope:namespace user</span></pre>
+          <p><code>scanUser</code> が自然に収まる。</p>
+        </div>
+      </div>
+      <p class="quote" style="margin-top:24px">問われているのは、<strong>その名前と置き場所が噛み合っているか</strong></p>
+    </section>
+
+
+    <section class="slide" id="slide-11" data-slide="11 / 14">
+      <div class="kicker">Case study: spf13/cobra</div>
+      <h2>最も古い file だけ、<span class="warning">リネームを忘れていた</span></h2>
+      <div class="grid-2">
+        <div class="card cyan">
+          <h3>ほかの completion generators</h3>
+          <pre>gen<span class="code-good">Zsh</span>Comp
+gen<span class="code-good">Fish</span>Comp
+gen<span class="code-good">PowerShell</span>Comp
+gen<span class="code-good">Bash</span>Comp <span class="code-comment">// V2</span></pre>
+          <p>どれも、自分の shell 名を名乗っている。</p>
+        </div>
+        <div class="card coral">
+          <h3>古い <code>bash_completions.go</code></h3>
+          <div class="symbol-renames">
+            <div class="symbol-rename"><code class="before">gen</code><span class="arrow">→</span><code class="after">genBashCommands</code></div>
+            <div class="symbol-rename"><code class="before">writeFlag</code><span class="arrow">→</span><code class="after">writeBashFlag</code></div>
+            <div class="symbol-rename"><code class="before">writeCommands</code><span class="arrow">→</span><code class="after">writeBashCommands</code></div>
+          </div>
+          <p><strong>Bash の名前がなかった。</strong>リネームで namespace を明示。</p>
+        </div>
+      </div>
+      <p class="quote" style="margin-top:20px">「<code>scan</code> は 1 つしか置けない」が、実在 OSS でも起きていた。</p>
+      <p class="footer">spf13/cobra: 14 files / 6,138 lines、開始時 boundary 35 / qualify 119 → 最終 0 / 0</p>
+    </section>
+
+
+
+
+    <section class="slide" id="slide-12" data-slide="12 / 14">
+      <div class="kicker">Durable intent</div>
+      <h2>AI 時代に欲しいのは、<span class="accent">判断が残る</span>こと</h2>
+      <div class="handoff">
+        <div class="avatar">👤<br>人間</div>
+        <div class="flow-arrow">→</div>
+        <div class="source">
+          <strong>source code</strong>
+          <code>//declscope:package</code>
+          <code>//declscope:namespace user</code>
+          <span class="source-caption">診断・ディレクティブ・導入 skill</span>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="avatar">🤖<br>次の agent</div>
+      </div>
+      <div class="grid-3" style="margin-top:26px">
+        <div class="card"><h3>診断</h3><p>何の境界を越えたか</p></div>
+        <div class="card"><h3>directive</h3><p>何を共有してよいか</p></div>
+        <div class="card"><h3>skill</h3><p>安全な導入順序</p></div>
+      </div>
+    </section>
+
+
+
+
+    <section class="slide" id="slide-13" data-slide="13 / 14">
+      <div class="kicker">Takeaways</div>
+      <h2>フラットさを保ったまま、<br><span class="accent">内側の境界を検査する</span></h2>
+      <div class="summary-list">
+        <div class="summary-item"><span class="check">✓</span><span>Go には file 単位の private がない</span></div>
+        <div class="summary-item"><span class="check">✓</span><span>暗黙の所有は、人にも AI にも見えにくい</span></div>
+        <div class="summary-item"><span class="check">✓</span><span>declscope は越境を決定論的に検査する</span></div>
+        <div class="summary-item"><span class="check">✓</span><span>答えは「守る」か「共有を宣言する」</span></div>
+        <div class="summary-item"><span class="check">✓</span><span>directive が設計判断の引き継ぎになる</span></div>
+      </div>
+      <div class="url-box">github.com/mpyw/declscope</div>
+      <p class="footer">使ってみた感想・Issue、お待ちしています。</p>
+    </section>
+
+    <section class="slide" id="slide-14" data-slide="14 / 14">
+      <div class="kicker">Appendix</div>
+      <h2>それぞれの Linter に、それぞれの境界</h2>
+      <img
+        class="original-boundaries"
+        src="../../declscope/docs/boundaries.png"
+        onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/mpyw/declscope/main/docs/boundaries.png'"
+        alt="depguard、declscope、deadcode が守る3つの入れ子状の境界を示す図"
+      >
+      <p class="footer">Original: github.com/mpyw/declscope/blob/main/docs/boundaries.png</p>
+    </section>
+  </main>
+
+  <div class="screen-help">← → / Space：移動　P：印刷</div>
+
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll('.slide')]
+        .filter((slide) => getComputedStyle(slide).display !== 'none');
+      const bar = document.querySelector('.progress > i');
+      let current = 0;
+
+      slides.forEach((slide, index) => {
+        slide.dataset.slide = `${String(index + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+      });
+
+      const go = (index) => {
+        current = Math.max(0, Math.min(slides.length - 1, index));
+        slides[current].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        history.replaceState(null, '', `${location.pathname}${location.search}#${slides[current].id}`);
+        bar.style.width = `${((current + 1) / slides.length) * 100}%`;
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        current = slides.indexOf(visible.target);
+        bar.style.width = `${((current + 1) / slides.length) * 100}%`;
+      }, { threshold: [.45, .7] });
+
+      slides.forEach((slide) => observer.observe(slide));
+
+      document.addEventListener('keydown', (event) => {
+        if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(event.key)) {
+          event.preventDefault(); go(current + 1);
+        } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(event.key)) {
+          event.preventDefault(); go(current - 1);
+        } else if (event.key === 'Home') {
+          event.preventDefault(); go(0);
+        } else if (event.key === 'End') {
+          event.preventDefault(); go(slides.length - 1);
+        } else if (event.key.toLowerCase() === 'p') {
+          window.print();
+        }
+      });
+
+      const hashIndex = slides.findIndex((slide) => `#${slide.id}` === location.hash);
+      if (hashIndex >= 0) current = hashIndex;
+      bar.style.width = `${((current + 1) / slides.length) * 100}%`;
+    })();
+  </script>
+</body>
+</html>
