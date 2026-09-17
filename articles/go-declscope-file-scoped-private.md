@@ -435,29 +435,47 @@ $ declscope baseline ./...       # .declscope-baseline.yaml を書き出す
 
 ## 実際にやってみた
 
-有名なフラットパッケージ 2 つに declscope をかけて，**指摘がゼロになるまで直しきった** ものを fork 上の PR として置いてあります。どちらもコミットを追うと件数が段階的に落ちていくので，何にいくら効くのかが読めると思います。
+有名なフラットパッケージである [spf13/cobra](https://github.com/spf13/cobra) に declscope をかけて，**指摘がゼロになるまで直しきった** ものを fork 上の PR として置いてあります。コミットを追うと件数が段階的に落ちていくので，何にいくら効くのかが読めると思います。
 
 https://github.com/mpyw-forks/spf13-cobra/pull/1
 
-https://github.com/mpyw-forks/urfave-cli/pull/1
-
-| | cobra | urfave/cli |
-|:---|---:|---:|
-| 対象 | 14 ファイル / 6,138 行 | 39 ファイル / 6,641 行 |
-| 開始時の `boundary` / `qualify` | 35 / 119 | 112 / 114 |
-| 単位を宣言した後 | 21 / 76 | 79 / 82 |
-| 最終 | **0 / 0** | **0 / 0** |
-| 差分 | 25 ファイル +291/-205 | 43 ファイル +572/-403 |
+| 項目 | spf13/cobra |
+|:---|---:|
+| 対象 | 14 ファイル / 6,138 行 |
+| 開始時の `boundary` / `qualify` | 35 / 119 |
+| 単位を宣言した後 | 21 / 76 |
+| 最終 | **0 / 0** |
+| 差分 | 25 ファイル +291/-205 |
 
 :::message alert
-どちらも **本家に向けた提案ではありません。** base も head も自分の fork で，クローズ済みです。これらはバグ報告ではなく，「ファイル分割と設計の対応関係を数えるとどう見えるか」の実例です。
+これは **本家に向けた提案ではありません。** base も head も自分の fork で，クローズ済みです。バグ報告ではなく，「ファイル分割と設計の対応関係を数えるとどう見えるか」の実例です。
 :::
 
-読みどころを 2 つだけ挙げておきます。
+### 最も古いファイルだけが，リネームを忘れていた
 
-**cobra には，自分の規約から取り残されたファイルが 1 つありました。** 補完生成器は 5 つあり，zsh も fish も powershell も，そして bash の V2 でさえ `genZshComp` `genFishComp` `genBashComp` と自分のシェル名を名乗っています。**最も古い `bash_completions.go` だけが名乗っておらず**，`writeFlag` `writeCommands` `gen` という一番汎用的な名前を占有していました。2 つ目の生成器が自分の `writeFlag` を持てない状態です。冒頭で書いた「`scan` は 1 つしか宣言できない」がそのまま起きていました。
+読みどころを 1 つだけ挙げておきます。**cobra には，自分の規約から取り残されたファイルが 1 つありました。**
 
-**urfave/cli では，5 つの関数が違うファイルに住んでいました。** `help.go` が抱えていた `shouldRunCompletion` / `runCompletion` などは補完のディスパッチで，help のものに何一つ触っていません。**リネームではなく移動で解決した指摘が 7 件** ありました。`boundary` は移動では解けないと書きましたが，`qualify` のほうは「置き場所が違う」と言っていることが多く，こちらは移動が効きます。
+補完生成器は 5 つあります。zsh も fish も powershell も，そして bash の V2 でさえ，関数名で自分のシェル名を名乗っています。
+
+```go
+genZshComp
+genFishComp
+genPowerShellComp
+genBashComp // V2
+```
+
+ところが **最も古い `bash_completions.go` だけが名乗っておらず**，一番汎用的な名前を占有していました。リネームで namespace を明示すると，こうなります。
+
+```diff
+- gen
++ genBashCommands
+- writeFlag
++ writeBashFlag
+- writeCommands
++ writeBashCommands
+```
+
+`writeFlag` が bash のものだと誰も書いていない以上，2 つ目の生成器は自分の `writeFlag` を持てません。冒頭で書いた「`scan` は 1 つしか宣言できない」が，実在の OSS でそのまま起きていたわけです。
 
 # AI エージェントと使う
 
