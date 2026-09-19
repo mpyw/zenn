@@ -1,11 +1,13 @@
 ---
-title: "Go のフラットなパッケージにファイル単位の private を持ち込む Linter “declscope”"
+title: "AI が書く Go コードの品質を劇的に向上させる Linter: “declscope”"
 emoji: "🔒"
 type: "tech"
 topics: ["go", "linter", "静的解析", "ai", "oss"]
 published: true
 publication_name: "yumemi_inc"
 ---
+
+*旧題: 「Go のフラットなパッケージにファイル単位の private を持ち込む Linter “declscope”」*
 
 # はじめに
 

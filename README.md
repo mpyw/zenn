@@ -13,7 +13,7 @@
 
 ## Go
 
-- **[🔒 Go のフラットなパッケージにファイル単位の private を持ち込む Linter “declscope”](https://zenn.dev/yumemi_inc/articles/go-declscope-file-scoped-private)**
+- **[🔒 AI が書く Go コードの品質を劇的に向上させる Linter: “declscope”](https://zenn.dev/yumemi_inc/articles/go-declscope-file-scoped-private)**
   &nbsp;[[✍Edit]️](./articles/go-declscope-file-scoped-private.md)
 - **[🔮 Linter 開発こそ Vibe Coding の最も優れた適用例の 1 つである](https://zenn.dev/mpyw/articles/go-linter-vibe-coding)**
   &nbsp;[[✍Edit]️](./articles/go-linter-vibe-coding.md)
