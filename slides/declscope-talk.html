@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Go のフラットなパッケージに「ファイル単位の private」を</title>
+  <title>AI が書く Go コードの品質を劇的に向上させる Linter: “declscope”</title>
   <style>
     :root {
       --ink: #14213d;
@@ -937,6 +937,12 @@
       font-size: clamp(64px, 9vw, 128px);
     }
 
+    .title-slide .former-title {
+      margin-top: 16px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
     .title-slide .meta {
       margin-top: 36px;
       color: var(--muted);
@@ -1033,8 +1039,9 @@
   <main class="deck">
     <section class="slide title-slide" id="slide-1" data-slide="01 / 14">
       <div class="kicker">Go × Static Analysis × AI</div>
-      <h1>Go のフラットな<br>パッケージに<br><span class="accent">「ファイル単位の private」</span>を</h1>
-      <p class="subtitle">Linter “declscope” を作った話</p>
+      <h1>AI が書く Go コードの<br><span class="accent">品質を劇的に向上させる</span><br>Linter: “declscope”</h1>
+      <p class="subtitle">フラットなパッケージのまま、内側に境界を引く</p>
+      <p class="former-title small">旧題: Go のフラットなパッケージに「ファイル単位の private」を</p>
       <p class="meta">mpyw / Accenture Japan Ltd　　2026</p>
       <div class="lock" aria-hidden="true">🔒</div>
       <aside class="notes">今日は Go のパッケージを細かく分けずに、パッケージの内側へ境界を持ち込む話です。</aside>
