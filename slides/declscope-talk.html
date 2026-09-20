@@ -499,6 +499,14 @@
       font-weight: 750;
     }
 
+    /* 追加した導入 2 枚。文字サイズは他スライドと揃えたまま、余白だけ詰めて 16:9 に収める */
+    #slide-intro-a h2,
+    #slide-intro-b h2 { margin-bottom: 26px; }
+    #slide-intro-a .big-number,
+    #slide-intro-b .big-number { font-size: clamp(36px, 4.6vw, 66px); }
+    #slide-intro-a .quote,
+    #slide-intro-b .quote { margin-top: 16px !important; }
+
     #slide-5 h2 { margin-bottom: 24px; }
     #slide-5 .card { padding-block: clamp(14px, 1.5vw, 22px); }
     #slide-5 .card p,
@@ -1037,7 +1045,7 @@
 <body>
   <div class="progress" aria-hidden="true"><i></i></div>
   <main class="deck">
-    <section class="slide title-slide" id="slide-1" data-slide="01 / 14">
+    <section class="slide title-slide" id="slide-1" data-slide="01 / 16">
       <div class="kicker">Go × Static Analysis × AI</div>
       <h1>AI が書く Go コードの<br><span class="accent">品質を劇的に向上させる</span><br>Linter: “declscope”</h1>
       <p class="subtitle">フラットなパッケージのまま、内側に境界を引く</p>
@@ -1047,7 +1055,49 @@
       <aside class="notes">今日は Go のパッケージを細かく分けずに、パッケージの内側へ境界を持ち込む話です。</aside>
     </section>
 
-    <section class="slide" id="slide-2" data-slide="02 / 14">
+    <section class="slide" id="slide-intro-a" data-slide="02 / 16">
+      <div class="kicker">The language</div>
+      <h2>Go は、<span class="accent">誰が書いても同じようになる</span>言語</h2>
+      <div class="grid-2">
+        <div class="card coral">
+          <span class="big-number" style="color:var(--coral)">かつて</span>
+          <h3>代償は<strong class="warning">記述量</strong></h3>
+          <ul>
+            <li>三項演算子もメタプログラミングも無い</li>
+            <li>他の言語なら 1 行、Go では 5 行</li>
+          </ul>
+        </div>
+        <div class="card cyan">
+          <span class="big-number">いま</span>
+          <h3>代償だけが<strong>消えた</strong></h3>
+          <ul>
+            <li>定型を打ち込むコストは AI がほぼゼロに</li>
+            <li>残るのは<strong>読めば意味が一意</strong>という性質</li>
+          </ul>
+        </div>
+      </div>
+      <p class="quote">素朴さは、AI 時代に<span class="accent">評価が反転した</span>特性</p>
+    </section>
+
+    <section class="slide" id="slide-intro-b" data-slide="03 / 16">
+      <div class="kicker">Where quality comes from</div>
+      <h2>では、Go のコード品質は<span class="accent">何で決まるのか</span></h2>
+      <div class="grid-2">
+        <div class="card">
+          <span class="big-number" style="color:var(--muted)">細部</span>
+          <h3>書きぶりの技巧</h3>
+          <p>ショートハンドや言語機能の使いこなし。<span class="accent">AI に任せてよい部分</span>。</p>
+        </div>
+        <div class="card cyan">
+          <span class="big-number">大局</span>
+          <h3>コードベースの整理</h3>
+          <p>どこに宣言を置き、どこに境界を引くか。<strong class="warning">AI は勝手に整えない。</strong></p>
+        </div>
+      </div>
+      <p class="quote">整理の道具は <code>package</code> だけ —— それが<span class="warning">少し非力</span></p>
+    </section>
+
+    <section class="slide" id="slide-2" data-slide="04 / 16">
       <div class="kicker">The gap</div>
       <h2>Go の可視性は、ほぼ <span class="accent">2 段階</span></h2>
       <div class="vis-levels">
@@ -1113,7 +1163,7 @@
       <p class="footer">unexported ≠ このファイルだけ</p>
     </section>
 
-    <section class="slide" id="slide-3" data-slide="03 / 14">
+    <section class="slide" id="slide-3" data-slide="05 / 16">
       <div class="kicker">Invisible ownership</div>
       <h2>暗黙の所有権は、コードから見えない</h2>
       <div class="package-diagram">
@@ -1136,7 +1186,7 @@
     </section>
 
 
-    <section class="slide" id="slide-4" data-slide="04 / 14">
+    <section class="slide" id="slide-4" data-slide="06 / 16">
       <div class="kicker">Agentic coding</div>
       <h2>AI は規約を破るというより、<br><span class="accent">見える API を使う</span></h2>
       <div class="flow">
@@ -1162,7 +1212,7 @@
     </section>
 
 
-    <section class="slide" id="slide-5" data-slide="05 / 14">
+    <section class="slide" id="slide-5" data-slide="07 / 16">
       <div class="kicker">Trade-off</div>
       <h2>だからといって、package を割れば<br>終わりでもない</h2>
       <div class="grid-2">
@@ -1185,7 +1235,7 @@
     </section>
 
 
-    <section class="slide" id="slide-6" data-slide="06 / 14">
+    <section class="slide" id="slide-6" data-slide="08 / 16">
       <div class="kicker">What declscope guards</div>
       <h2>declscope が守るのは、<span class="accent">2 種類の境界</span></h2>
       <div class="rule-pair">
@@ -1209,7 +1259,7 @@
     </section>
 
 
-    <section class="slide" id="slide-7" data-slide="07 / 14">
+    <section class="slide" id="slide-7" data-slide="09 / 16">
       <div class="kicker">Only two concepts</div>
       <h2>覚えることは <span class="accent">2 つだけ</span></h2>
       <div class="grid-2">
@@ -1235,7 +1285,7 @@
     </section>
 
 
-    <section class="slide" id="slide-8" data-slide="08 / 14">
+    <section class="slide" id="slide-8" data-slide="10 / 16">
       <div class="kicker">Boundary rule</div>
       <h2><code>boundary</code> 違反への答えは、必ず 2 つ</h2>
       <div class="decision">
@@ -1257,7 +1307,7 @@ func normalizeEmail(s string) string</pre>
     </section>
 
 
-    <section class="slide" id="slide-9" data-slide="09 / 14">
+    <section class="slide" id="slide-9" data-slide="11 / 16">
       <div class="kicker">Shared namespace</div>
       <h2>複数ファイルで 1 つの namespace に<br>まとめても OK</h2>
       <div class="grid-2">
@@ -1277,7 +1327,7 @@ func (s *Statement) Where(...) { ... }</pre>
     </section>
 
 
-    <section class="slide" id="slide-10" data-slide="10 / 14">
+    <section class="slide" id="slide-10" data-slide="12 / 16">
       <div class="kicker">Qualify rule</div>
       <h2><code>qualify</code> は、シンボル名のどこかに<br><span class="accent">namespace が含まれること</span>を要求する</h2>
       <p class="lead">デフォルトではプレフィクスを提案するが、そのまま従う必要はない。直す場所は 2 つある。</p>
@@ -1305,7 +1355,7 @@ func (s *Statement) Where(...) { ... }</pre>
     </section>
 
 
-    <section class="slide" id="slide-11" data-slide="11 / 14">
+    <section class="slide" id="slide-11" data-slide="13 / 16">
       <div class="kicker">Case study: spf13/cobra</div>
       <h2>最も古いファイルだけ、<span class="warning">リネームを忘れていた</span></h2>
       <div class="grid-2">
@@ -1334,7 +1384,7 @@ gen<span class="code-good">Bash</span>Comp <span class="code-comment">// V2</spa
 
 
 
-    <section class="slide" id="slide-12" data-slide="12 / 14">
+    <section class="slide" id="slide-12" data-slide="14 / 16">
       <div class="kicker">Durable intent</div>
       <h2>AI 時代に必要なのは、<span class="accent">判断を記録する</span>こと</h2>
       <div class="handoff">
@@ -1359,7 +1409,7 @@ gen<span class="code-good">Bash</span>Comp <span class="code-comment">// V2</spa
 
 
 
-    <section class="slide" id="slide-13" data-slide="13 / 14">
+    <section class="slide" id="slide-13" data-slide="15 / 16">
       <div class="kicker">Takeaways</div>
       <h2>フラットさを保ったまま、<br><span class="accent">内側の境界を検査する</span></h2>
       <div class="summary-list">
@@ -1373,7 +1423,7 @@ gen<span class="code-good">Bash</span>Comp <span class="code-comment">// V2</spa
       <p class="footer">使ってみた感想・Issue、お待ちしています。</p>
     </section>
 
-    <section class="slide" id="slide-14" data-slide="14 / 14">
+    <section class="slide" id="slide-14" data-slide="16 / 16">
       <div class="kicker">Appendix</div>
       <h2>それぞれの Linter に、それぞれの境界</h2>
       <img
