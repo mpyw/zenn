@@ -1,6 +1,6 @@
 ---
 title: "AI が書く Go コードの品質を劇的に向上させる Linter: “declscope”"
-emoji: "🔒"
+emoji: "✨"
 type: "tech"
 topics: ["go", "linter", "静的解析", "ai", "oss"]
 published: true
