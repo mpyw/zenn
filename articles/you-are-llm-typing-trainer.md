@@ -3,7 +3,7 @@ title: "LLM の応答を人間が一文字ずつ手打ちするタイピング�
 emoji: "⌨️"
 type: "idea"
 topics: ["llm", "ai", "typing", "claudecode", "個人開発"]
-published: false
+published: true
 publication_name: "yumemi_inc"
 ---
 
@@ -81,7 +81,7 @@ Java 回では「削除したと述べましたが，実際には残っていま
 Normal 以上のセッションでは，一度書いたコードに対してユーザーが「やっぱり 5 回にして」「上限つけて」と言い出します。そしてアシスタントは，全文を書き直す代わりに `sed` で当てにいきます。
 
 ```
-sed -i '' -e 's/`on${Capitalize<string & K>}`/`handle${Capitalize<K \& string>}`/' src/events/emitter.ts
+sed -i '' -e 's/`on${Capitalize<string & K>}`/`handle${Capitalize<K \& string>}`/' -e "s/Listeners\['onSave'\]/Listeners['handleSave']/" src/events/emitter.ts
 ```
 
 **置換側の `&` をバックスラッシュで逃がす回**です。打鍵教材としては最高に嫌がらせですね。バッククォートとテンプレートリテラルも入っています。
