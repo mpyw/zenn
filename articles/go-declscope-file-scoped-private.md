@@ -182,7 +182,7 @@ func normalizeEmail(s string) string {
 :::message
 `//declscope:package` は `-fix` でも挿入できますが，**今回のケースでは使いません。** `-fix` ができるのは宣言をその場で広げることだけで，ファイルを跨いで動かすことはできないからです。任せると `normalizeEmail` は `user_repository.go` に残ったまま共有物になります。
 
-`-fix` は常に広げる方向にしか働きません。ツールが機械的に適用できる修正がそれしかないからです。**どこに置くべきかという判断こそ，AI エージェントにやらせたいところ** です。
+`boundary` の `-fix` は常に広げる方向にしか働きません。ツールが機械的に適用できる修正がそれしかないからです。**どこに置くべきかという判断こそ，AI エージェントにやらせたいところ** です。
 :::
 
 # 知っておく必要があるのは 2 つだけ
@@ -246,10 +246,10 @@ client.go:4:6: func doSomething is private to the core namespace, but is used fr
 |:---|:---|:---|
 | **`boundary`** | この namespace から，あの namespace のものに触ってよいか | 既定で ON |
 | **`qualify`** | シンボル名のどこかに namespace が含まれているか | 既定で OFF |
-| `surplus` | その共有宣言，本当に必要か | 既定で ON |
+| `surplus` | その共有宣言，本当に必要か | 既定で `loose` |
 | `directive` | そのディレクティブ，何か決めているか | 常に ON |
 
-下の 2 つは説明不要でしょう。`surplus` は他の namespace からの使用が 1 つも見えない `//declscope:package` を，`directive` は何も束縛していない，あるいは不正なディレクティブを報告します。どちらも「書いたものが無駄になっていないか」の監査です。
+下の 2 つは説明不要でしょう。`surplus` は他の namespace からの使用が 1 つも見えない `//declscope:package` を，`directive` は何も束縛していない，あるいは不正なディレクティブを報告します。どちらも「書いたものが無駄になっていないか」の監査です。`surplus` には，より厳しく判定する `strict` モードもあります（後述）。
 
 ## `boundary` ルール
 
@@ -315,6 +315,70 @@ package database
 ```
 
 これで `query.go` は `statement` namespace に参加し，エラーは消えます。
+
+## `surplus` ルールの `strict` モード
+
+`surplus` は既定の `loose` では **ディレクティブ単位** で判定します。1 つの `//declscope:package` が束ねる宣言のうち，1 つでも他の namespace から使われていれば，そのディレクティブ全体が黙ります。
+
+これで困るのが **複数の namespace から使われる構造体** です。型に `//declscope:package` を付けるとフィールドもまとめて `package` になりますが，他から読まれるのはその一部だけ，ということはよくあります。
+
+```go:account.go
+package bank
+
+//declscope:package
+type account struct {
+    id      int
+    balance int
+}
+
+func accountDeposit(a *account, n int) { a.balance += n }
+```
+
+```go:ledger.go
+package bank
+
+// ledger から読むのは id だけ
+func ledgerKey(a account) int { return a.id }
+```
+
+`loose` ではこれは何も報告されません。`id` が使われているからです。しかし `balance` は必要以上に広く開いたままです。
+
+`rules.surplus: strict` にすると **宣言 1 つ 1 つ** を判定し，これを報告します。
+
+```console
+$ declscope ./...
+account.go:7:2: field account.balance takes package scope from //declscope:package on account, but no use from another namespace is visible to declscope
+```
+
+こちらは `-fix` で **狭める方向の修正** が入ります。
+
+```go:account.go
+//declscope:package
+type account struct {
+    id int
+    //declscope:private
+    balance int
+}
+```
+
+型は共有物として宣言し，他の namespace が読まないフィールドだけを `private` に戻す。**共有する範囲を必要最小限に保つ** ためのパターンです。
+
+:::message
+慣習としては private なフィールドを後ろにまとめるのが読みやすいですが，`-fix` はフィールドを並べ替えません。キーなしの複合リテラルやバイナリエンコーディング， `unsafe` のオフセットなど，フィールドの順序が観測される場面があるからです。問題がない場合は自分で並べ替えてください。
+:::
+
+型のフィールドのほか，`var` / `const` / `type` ブロック内の各 spec や，ファイル全体に掛けた `//declscope:package` の下の各宣言も同じように判定されます。
+
+`strict` はオプトインです。**`boundary` が片付いてから有効にする** のがよいでしょう。事前に件数を見積もるには， `-config` で一時的な設定を渡して `survey` を走らせます。
+
+```bash
+printf 'rules:\n  surplus: strict\n' > /tmp/s.yaml
+declscope survey -config /tmp/s.yaml -format=json ./... | jq .totals.surplus
+```
+
+:::message alert
+`-config` はリポジトリの設定ファイルを **置き換えます。** 既存の設定がある場合は，その内容を一時ファイルにコピーしてから `surplus: strict` を足してください。
+:::
 
 ## `qualify` ルール
 
@@ -534,7 +598,7 @@ gh skill install mpyw/declscope
 - **`//declscope:namespace` は package 節の前に書く。** 後ろに置くと黙って無効になる。何をしても診断が動かないときは，まず配置を疑え
 - **設定はリポジトリオーナーの決定であって，エージェントが決めることではない。** 設定ファイルを書く前に聞いて，答えを待て
 
-作業の順序も書いてあります。**`boundary` を先に，それも広げるのではなく境界を動かして片付けろ。そして測り直せ。** `boundary` を潰す過程で 2 つの namespace が 1 つに統合されると `ondemand` の条件から外れるので，`qualify` の指摘が連鎖的に消えることがあるからです。逆順にやると，消えるはずの指摘をリネームして回る羽目になります。
+作業の順序も書いてあります。**`boundary` を先に，それも広げるのではなく境界を動かして片付けろ。そして測り直せ。** `boundary` を潰す過程で 2 つの namespace が 1 つに統合されると `ondemand` の条件から外れるので，`qualify` の指摘が連鎖的に消えることがあるからです。逆順にやると，消えるはずの指摘をリネームして回る羽目になります。`boundary` が片付いたら，`surplus: strict` を提案するところまで書いてあります。
 
 # 限界
 
