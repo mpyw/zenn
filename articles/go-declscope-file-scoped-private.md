@@ -370,17 +370,6 @@ type account struct {
 
 型のフィールドのほか，`var` / `const` / `type` ブロック内の各 spec や，ファイル全体に掛けた `//declscope:package` の下の各宣言も同じように判定されます。
 
-`strict` はオプトインです。**`boundary` が片付いてから有効にする** のがよいでしょう。事前に件数を見積もるには， `-config` で一時的な設定を渡して `survey` を走らせます。
-
-```bash
-printf 'rules:\n  surplus: strict\n' > /tmp/s.yaml
-declscope survey -config /tmp/s.yaml -format=json ./... | jq .totals.surplus
-```
-
-:::message alert
-`-config` はリポジトリの設定ファイルを **置き換えます。** 既存の設定がある場合は，その内容を一時ファイルにコピーしてから `surplus: strict` を足してください。
-:::
-
 ## `unused` ルールの `strict` モード
 
 `unused` は既定の `loose` では，**どの設定でも** 消してスコープが変わらないディレクティブだけを報告します。`defaults.unexported` の値を変えれば効くようになるディレクティブは，黙ります。
@@ -550,8 +539,6 @@ rules:
 `qualify: ondemand` は，namespace が 2 つ以上のパッケージで有効になり，1 つでは無効になります。全部に同じプレフィックスが付いたところで何も区別しないから無意味だ，という考えです。通常はこの設定がよいのではないでしょうか。
 
 `exported: true` は公開 API にも関わるため，必ずしも導入が成功するとは限りませんが， internal 構成がメインのリポジトリであればそれほど大きな影響なく導入できるかもしれません。新規プロジェクトであればぜひ導入したいところです。
-
-`surplus: strict` と `unused: strict` は，既存のリポジトリでは **`boundary` が片付いてから** 有効にするのがよいでしょう。どちらも「書いたものが無駄になっていないか」を厳しく問うもので，境界がまだ動いている段階では指摘がすぐに古くなるからです。
 
 :::message
 なお **Exported な宣言にリネームは提案されません。** 報告されるだけです。パッケージの外からの使用は declscope に見えないので，書き換えていいか判断できないからです。`-fix` を走らせても公開 API が勝手に変わることはありません。
