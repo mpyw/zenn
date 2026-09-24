@@ -240,16 +240,17 @@ client.go:4:6: func doSomething is private to the core namespace, but is used fr
 
 既定では Exported なものが `package`，それ以外が `private` です。
 
-# ルールは 4 つ
+# ルールは 5 つ
 
 | ルール | 何を問うか | 既定 |
 |:---|:---|:---|
 | **`boundary`** | この namespace から，あの namespace のものに触ってよいか | 既定で ON |
 | **`qualify`** | シンボル名のどこかに namespace が含まれているか | 既定で OFF |
 | `surplus` | その共有宣言，本当に必要か | 既定で `loose` |
-| `directive` | そのディレクティブ，何か決めているか | 常に ON |
+| `unused` | そのディレクティブ，何か決めているか | 既定で `loose` |
+| `directive` | そのディレクティブ，正しく書けているか | 常に ON |
 
-下の 2 つは説明不要でしょう。`surplus` は他の namespace からの使用が 1 つも見えない `//declscope:package` を，`directive` は何も束縛していない，あるいは不正なディレクティブを報告します。どちらも「書いたものが無駄になっていないか」の監査です。`surplus` には，より厳しく判定する `strict` モードもあります（後述）。
+下の 3 つは説明不要でしょう。`surplus` は他の namespace からの使用が 1 つも見えない `//declscope:package` を，`unused` は消してもスコープが何も変わらないディレクティブや，何も黙らせていない `//declscope:ignore` を報告します。どれも「書いたものが無駄になっていないか」の監査です。`directive` は書式の崩れたディレクティブや，未知・矛盾したディレクティブを報告します。ディレクティブとして読まれるのは `//declscope:name` の形だけで，`// declscope:package` のようにスペースを入れたものは効かずに報告されます。`surplus` と `unused` には，より厳しく判定する `strict` モードもあります（後述）。
 
 ## `boundary` ルール
 
@@ -380,6 +381,47 @@ declscope survey -config /tmp/s.yaml -format=json ./... | jq .totals.surplus
 `-config` はリポジトリの設定ファイルを **置き換えます。** 既存の設定がある場合は，その内容を一時ファイルにコピーしてから `surplus: strict` を足してください。
 :::
 
+## `unused` ルールの `strict` モード
+
+`unused` は既定の `loose` では，**どの設定でも** 消してスコープが変わらないディレクティブだけを報告します。`defaults.unexported` の値を変えれば効くようになるディレクティブは，黙ります。
+
+これで残るのが **既定値を書き写しただけのディレクティブ** です。unexported な構造体のフィールドは既定で `private` なので，次の `//declscope:private` は今の設定では何も変えていません。
+
+```go:user.go
+package app
+
+type user struct {
+	//declscope:private
+	name string
+}
+
+func userName(u user) string { return u.name }
+```
+
+`rules.unused: strict` にすると **今の設定で** 判定し，これを報告します。
+
+```console
+$ declscope ./...
+user.go:4:2: unused //declscope:private on user.name: it already has private scope
+```
+
+`strict` の報告には `-fix` が付き，ディレクティブの行を消します。
+
+```diff
+ type user struct {
+-	//declscope:private
+ 	name string
+ }
+```
+
+消すと他の報告が変わってしまう場合，たとえば別の namespace がその宣言を使っていて `boundary` の報告がそのディレクティブを名指ししている場合は，報告だけ残して `-fix` は付きません。
+
+:::message alert
+`strict` では `defaults.unexported` を変えると報告が変わります。新しい既定値と同じことを書いたディレクティブがすべて報告されます。`-fix` を 1 回走らせれば消えます。
+:::
+
+未使用の報告を黙らせたいときは `//declscope:ignore unused` と書きます。`//declscope:ignore directive` では黙らず，その ignore 自体が「何も黙らせていない」と報告されます。
+
 ## `qualify` ルール
 
 既定で OFF ですが，**私は ON にすることをおすすめします。** `boundary` が 「この namespace から，あの namespace のものに触ってよいか」 を問うのに対し，`qualify` は **「シンボル名のどこかに namespace が含まれているか」** を問います。パッケージレベルの宣言に要求するのは，これだけです。
@@ -501,11 +543,15 @@ rules:
   naming:
     qualify: ondemand   # 2 つ目の namespace ができた時点で要求する
     exported: true      # Exported な宣言も対象にする
+  surplus: strict       # 共有したが他から使われていない宣言を 1 つずつ報告する
+  unused: strict        # 今の設定で何も変えていないディレクティブを報告して消す
 ```
 
 `qualify: ondemand` は，namespace が 2 つ以上のパッケージで有効になり，1 つでは無効になります。全部に同じプレフィックスが付いたところで何も区別しないから無意味だ，という考えです。通常はこの設定がよいのではないでしょうか。
 
 `exported: true` は公開 API にも関わるため，必ずしも導入が成功するとは限りませんが， internal 構成がメインのリポジトリであればそれほど大きな影響なく導入できるかもしれません。新規プロジェクトであればぜひ導入したいところです。
+
+`surplus: strict` と `unused: strict` は，既存のリポジトリでは **`boundary` が片付いてから** 有効にするのがよいでしょう。どちらも「書いたものが無駄になっていないか」を厳しく問うもので，境界がまだ動いている段階では指摘がすぐに古くなるからです。
 
 :::message
 なお **Exported な宣言にリネームは提案されません。** 報告されるだけです。パッケージの外からの使用は declscope に見えないので，書き換えていいか判断できないからです。`-fix` を走らせても公開 API が勝手に変わることはありません。
