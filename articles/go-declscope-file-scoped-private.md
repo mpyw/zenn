@@ -319,7 +319,7 @@ package database
 
 ## `surplus` ルールの `strict` モード
 
-`surplus` は既定の `loose` では **ディレクティブ単位** で判定します。1 つの `//declscope:package` が束ねる宣言のうち，1 つでも他の namespace から使われていれば，そのディレクティブ全体が黙ります。
+既定は `loose` ですが，**私は `strict` にすることをおすすめします。** `surplus` は `loose` では **ディレクティブ単位** で判定します。1 つの `//declscope:package` が束ねる宣言のうち，1 つでも他の namespace から使われていれば，そのディレクティブ全体が黙ります。
 
 これで困るのが **複数の namespace から使われる構造体** です。型に `//declscope:package` を付けるとフィールドもまとめて `package` になりますが，他から読まれるのはその一部だけ，ということはよくあります。
 
@@ -372,7 +372,7 @@ type account struct {
 
 ## `unused` ルールの `strict` モード
 
-`unused` は既定の `loose` では，**どの設定でも** 消してスコープが変わらないディレクティブだけを報告します。`defaults.unexported` の値を変えれば効くようになるディレクティブは，黙ります。
+既定は `loose` ですが，**私は `strict` にすることをおすすめします。** `unused` は `loose` では，**どの設定でも** 消してスコープが変わらないディレクティブだけを報告します。`defaults.unexported` の値を変えれば効くようになるディレクティブは，黙ります。
 
 これで残るのが **既定値を書き写しただけのディレクティブ** です。unexported な構造体のフィールドは既定で `private` なので，次の `//declscope:private` は今の設定では何も変えていません。
 
