@@ -240,17 +240,20 @@ client.go:4:6: func doSomething is private to the core namespace, but is used fr
 
 既定では Exported なものが `package`，それ以外が `private` です。
 
-# ルールは 5 つ
+# ルールは 6 つ
 
 | ルール | 何を問うか | 既定 |
 |:---|:---|:---|
 | **`boundary`** | この namespace から，あの namespace のものに触ってよいか | 既定で ON |
-| **`qualify`** | シンボル名のどこかに namespace が含まれているか | 既定で OFF |
-| `surplus` | その共有宣言，本当に必要か | 既定で `loose` |
-| `unused` | そのディレクティブ，何か決めているか | 既定で `loose` |
+| **`qualify`** | シンボル名のどこかに namespace が含まれているか | **既定で OFF** |
+| `surplus` | その共有宣言，本当に必要か | **既定で `loose`** |
+| `unused` | そのディレクティブ，何か決めているか | **既定で `loose`** |
 | `directive` | そのディレクティブ，正しく書けているか | 常に ON |
+| **`overexported`** | その `internal/` 内の宣言，本当に Exported である必要があるか | **別のサブコマンド `declscope shrink` 実行時のみ** |
 
-下の 3 つは説明不要でしょう。`surplus` は他の namespace からの使用が 1 つも見えない `//declscope:package` を，`unused` は消してもスコープが何も変わらないディレクティブや，何も黙らせていない `//declscope:ignore` を報告します。どれも「書いたものが無駄になっていないか」の監査です。`directive` は書式の崩れたディレクティブや，未知・矛盾したディレクティブを報告します。ディレクティブとして読まれるのは `//declscope:name` の形だけで，`// declscope:package` のようにスペースを入れたものは効かずに報告されます。`surplus` と `unused` には，より厳しく判定する `strict` モードもあります（後述）。
+- `boundary` と `qualify` は後で詳しく説明します。
+- `surplus` と `unused` は，どちらも書いたものが無駄になっていないかを監査するルールです。より厳しく判定する `strict` モードもあります（後述）。
+- **`overexported` はモジュール全体を読まないと判定できないため，通常の実行では報告されません。専用の `declscope shrink` サブコマンドだけが報告します（後述）。**
 
 ## `boundary` ルール
 
@@ -544,6 +547,72 @@ rules:
 なお **Exported な宣言にリネームは提案されません。** 報告されるだけです。パッケージの外からの使用は declscope に見えないので，書き換えていいか判断できないからです。`-fix` を走らせても公開 API が勝手に変わることはありません。
 :::
 
+## `overexported` ルールと `declscope shrink` サブコマンド
+
+Exported な宣言は既定で `package` スコープなので，`boundary` の対象になりません。つまり **Exported である必要のない名前は，それだけであらゆる検査をすり抜けます。**
+
+*「本当にこの Export いるんだっけ？」*
+
+というのを確認したいときに困りますよね。普通の Linter は，これを判定できません。通常 Linter はそれが書かれた 1 パッケージ単位でしか読まないので，どこか別のパッケージから使われていることを知る術がないからです。
+
+しかし **`internal/` 配下に限定** するならば，Go の import 制限によってインポート元は 1 つのディレクトリツリーに限られます。モジュール全体を読めばインポート元をすべて見られるので，本当に使われていないかどうかを判断することができます。モジュール全体を読む処理はやや重いため， declscope はその処理を `declscope shrink` サブコマンドとして独立させて実現しています。
+
+```go:internal/user/user.go
+package user
+
+import "fmt"
+
+func Load(id int) string { return Format(id) }
+
+// Format renders an ID for display.
+func Format(id int) string { return fmt.Sprint(id) }
+```
+
+他のパッケージは `user.Load` しか呼んでいないとします。
+
+```console
+$ declscope shrink ./...
+internal/user/user.go:8:6: func Format is exported, but nothing outside example.com/app/internal/user uses it
+```
+
+`-fix` で unexport されます。doc コメントの先頭の名前も一緒に書き換わります。
+
+```diff
+-func Load(id int) string { return Format(id) }
++func Load(id int) string { return format(id) }
+
+-// Format renders an ID for display.
+-func Format(id int) string { return fmt.Sprint(id) }
++// format renders an ID for display.
++func format(id int) string { return fmt.Sprint(id) }
+```
+
+unexport された宣言は namespace の `private` になり，ここから `boundary` の検査が効き始めます。**`shrink` は通常の解析より先に実行してください。** 別の namespace から使われていれば，続く `declscope -fix` がそれを `//declscope:package` で明示します。CI でもこの順に並べます。
+
+```console
+$ declscope shrink -fix ./...
+$ declscope -fix ./...
+```
+
+**報告と `-fix` は別の基準で判定されます。** `-fix` は使用があり得ないと言い切れる場合だけ付き，疑いが残れば報告だけが残ります。
+
+| ケース | 結果 |
+|:---|:---|
+| リフレクションで読まれる（`fmt` や `encoding/json` に渡る値，タグ付きの構造体） | 報告しない |
+| 他のパッケージから使われている API が返す型・受け取る型 | 報告しない |
+| external test からしか使われていない，example 関数やビルドタグで除外されたファイルが名指ししている | 報告するが，`-fix` は付かない |
+| unexport した名前が衝突する，`MAX_RETRIES` のように Go らしい unexported の綴りがない | 報告するが，`-fix` は付かない |
+
+`internal/` の外，`package main`，ネストしたモジュールが import し得る `internal/` は判定しません。判定しなかったパッケージは stderr に理由付きで出ます。
+
+:::message
+削除まではしません。unexport した結果誰も使っていない宣言は，staticcheck の `unused` や gopls の `unusedfunc` が報告するようになります。
+:::
+
+:::message alert
+**このルールを黙らせたいときは `//declscope:ignore overexported` と書きます。特別扱いされるため，素の `//declscope:ignore` では黙りません。**
+:::
+
 # 既存のコードベースに入れる
 
 既に大量の越境があるコードベースに対しては， **baseline** を使います。
@@ -641,6 +710,8 @@ declscope は **1 度に 1 パッケージだけを読み，名前が綴られ�
 - リフレクション， `//go:linkname` ，生成コード
 - **誰も使っていない宣言**。 `boundary` は使用箇所を探すルールなので，未使用コードは何も報告しない
 
+例外は `declscope shrink` で，`internal/` の Exported な宣言に限ってモジュール全体を読んで判定します。
+
 最後の 1 つについては [`deadcode`](https://pkg.go.dev/golang.org/x/tools/cmd/deadcode) などの未使用コード用 Linter と併用してください。パッケージ間の境界を引きたい場合は [`depguard`](https://github.com/OpenPeeDeeP/depguard) です。 `depguard` がパッケージグラフを正直に保ち，declscope が各パッケージの内側を正直に保ち，`deadcode` がどちらも必要としなくなったものを剥がす — という住み分けになります。
 
 ![Go のプログラムを入れ子のフレームで描いた図。api パッケージと database パッケージの間では depguard が「このパッケージはあのパッケージを import してよいか」を問い，api から database への緑の矢印と，database から api への赤い矢印に打ち消し線が引かれている。database の内側，user_repository.go と order_repository.go の間では declscope が「このファイルはあの宣言に手を伸ばしてよいか」を問い，scanOrder から normalizeEmail への赤い矢印に打ち消し線が引かれている。プログラムの縁では deadcode が「そもそも到達可能か」を問い，矢印がどこからも入っていない mail パッケージが unreachable と注記されて灰色になっている。](https://raw.githubusercontent.com/mpyw/declscope/main/docs/boundaries.png)
@@ -652,6 +723,7 @@ declscope は **1 度に 1 パッケージだけを読み，名前が綴られ�
 - **declscope は，パッケージをフラットに保ったまま，その規約を決定論的に検査する。** 越境には「境界を守る」か「意図的な共有だと宣言する」かの 2 つの答えが必ずある
 - **`qualify` も ON にするのがおすすめ。** ただしその指摘は「名前を変えろ」ではなく「そのファイルは，それを宣言する場所として妥当か？」を問うている
 - **`surplus` と `unused` も `strict` がおすすめ。** 他から使われていない共有と，何も決めていないディレクティブを 1 つずつ洗い出し，`-fix` で片付けられる
+- **`internal/` の Exported な宣言は `declscope shrink` で絞れる。** 通常の解析より先に実行し，unexport した宣言にも `boundary` を効かせる
 - **AI 時代に必要なのは，判断を記録すること。** ディレクティブは人間が下した判断の永続的な記録になり，次のエージェントはそれを導出し直さずに継承する
 - **導入手順そのものも skill として同梱した。** エージェントが読む前提の手順書を作者が書いて配れる時代になった
 
