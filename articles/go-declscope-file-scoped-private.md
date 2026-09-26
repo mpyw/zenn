@@ -246,13 +246,13 @@ client.go:4:6: func doSomething is private to the core namespace, but is used fr
 |:---|:---|:---|
 | **`boundary`** | この namespace から，あの namespace のものに触ってよいか | 既定で ON |
 | **`qualify`** | シンボル名のどこかに namespace が含まれているか | **既定で OFF** |
-| `surplus` | その共有宣言，本当に必要か | **既定で `loose`** |
-| `unused` | そのディレクティブ，何か決めているか | **既定で `loose`** |
+| `surplus` | その共有宣言，本当に必要か | **既定で `strict`** |
+| `unused` | そのディレクティブ，何か決めているか | **既定で `strict`** |
 | `directive` | そのディレクティブ，正しく書けているか | 常に ON |
 | **`overexported`** | その `internal/` 内の宣言，本当に Exported である必要があるか | **別のサブコマンド `declscope shrink` 実行時のみ** |
 
 - `boundary` と `qualify` は後で詳しく説明します。
-- `surplus` と `unused` は，どちらも書いたものが無駄になっていないかを監査するルールです。より厳しく判定する `strict` モードもあります（後述）。
+- `surplus` は共有範囲が必要以上に広い宣言を 1 つずつ報告し，`unused` は現在の設定で何も変えないディレクティブを報告します。どちらも既定で `strict` で，`-fix` による修正もできます。
 - **`overexported` はモジュール全体を読まないと判定できないため，通常の実行では報告されません。専用の `declscope shrink` サブコマンドだけが報告します（後述）。**
 
 ## `boundary` ルール
@@ -319,100 +319,6 @@ package database
 ```
 
 これで `query.go` は `statement` namespace に参加し，エラーは消えます。
-
-## `surplus` ルールの `strict` モード
-
-既定は `loose` ですが，**私は `strict` にすることをおすすめします。** `surplus` は `loose` では **ディレクティブ単位** で判定します。1 つの `//declscope:package` が束ねる宣言のうち，1 つでも他の namespace から使われていれば，そのディレクティブ全体が黙ります。
-
-これで困るのが **複数の namespace から使われる構造体** です。型に `//declscope:package` を付けるとフィールドもまとめて `package` になりますが，他から読まれるのはその一部だけ，ということはよくあります。
-
-```go:account.go
-package bank
-
-//declscope:package
-type account struct {
-    id      int
-    balance int
-}
-
-func accountDeposit(a *account, n int) { a.balance += n }
-```
-
-```go:ledger.go
-package bank
-
-// ledger から読むのは id だけ
-func ledgerKey(a account) int { return a.id }
-```
-
-`loose` ではこれは何も報告されません。`id` が使われているからです。しかし `balance` は必要以上に広く開いたままです。
-
-`rules.surplus: strict` にすると **宣言 1 つ 1 つ** を判定し，これを報告します。
-
-```console
-$ declscope ./...
-account.go:7:2: field account.balance takes package scope from //declscope:package on account, but no use from another namespace is visible to declscope
-```
-
-こちらは `-fix` で **狭める方向の修正** が入ります。
-
-```go:account.go
-//declscope:package
-type account struct {
-    id int
-    //declscope:private
-    balance int
-}
-```
-
-型は共有物として宣言し，他の namespace が読まないフィールドだけを `private` に戻す。**共有する範囲を必要最小限に保つ** ためのパターンです。
-
-:::message
-慣習としては private なフィールドを後ろにまとめるのが読みやすいですが，`-fix` はフィールドを並べ替えません。キーなしの複合リテラルやバイナリエンコーディング， `unsafe` のオフセットなど，フィールドの順序が観測される場面があるからです。問題がない場合は自分で並べ替えてください。
-:::
-
-型のフィールドのほか，`var` / `const` / `type` ブロック内の各 spec や，ファイル全体に掛けた `//declscope:package` の下の各宣言も同じように判定されます。
-
-## `unused` ルールの `strict` モード
-
-既定は `loose` ですが，**私は `strict` にすることをおすすめします。** `unused` は `loose` では，**どの設定でも** 消してスコープが変わらないディレクティブだけを報告します。`defaults.unexported` の値を変えれば効くようになるディレクティブは，黙ります。
-
-これで残るのが **既定値を書き写しただけのディレクティブ** です。unexported な構造体のフィールドは既定で `private` なので，次の `//declscope:private` は今の設定では何も変えていません。
-
-```go:user.go
-package app
-
-type user struct {
-	//declscope:private
-	name string
-}
-
-func userName(u user) string { return u.name }
-```
-
-`rules.unused: strict` にすると **今の設定で** 判定し，これを報告します。
-
-```console
-$ declscope ./...
-user.go:4:2: unused //declscope:private on user.name: it already has private scope
-```
-
-`strict` の報告には `-fix` が付き，ディレクティブの行を消します。
-
-```diff
- type user struct {
--	//declscope:private
- 	name string
- }
-```
-
-消すと他の報告が変わってしまう場合，たとえば別の namespace がその宣言を使っていて `boundary` の報告がそのディレクティブを名指ししている場合は，報告だけ残して `-fix` は付きません。
-
-:::message alert
-`strict` では `defaults.unexported` を変えると報告が変わります。新しい既定値と同じことを書いたディレクティブがすべて報告されます。`-fix` を 1 回走らせれば消えます。
-:::
-
-未使用の報告を黙らせたいときは `//declscope:ignore unused` と書きます。`//declscope:ignore directive` では黙らず，その ignore 自体が「何も黙らせていない」と報告されます。
 
 ## `qualify` ルール
 
@@ -535,9 +441,9 @@ rules:
   naming:
     qualify: ondemand   # 2 つ目の namespace ができた時点で要求する
     exported: true      # Exported な宣言も対象にする
-  surplus: strict       # 共有したが他から使われていない宣言を 1 つずつ報告する
-  unused: strict        # 今の設定で何も変えていないディレクティブを報告して消す
 ```
+
+`boundary` は既定で ON，`surplus` と `unused` は既定で `strict` なので，設定は要りません。
 
 `qualify: ondemand` は，namespace が 2 つ以上のパッケージで有効になり，1 つでは無効になります。全部に同じプレフィックスが付いたところで何も区別しないから無意味だ，という考えです。通常はこの設定がよいのではないでしょうか。
 
@@ -700,7 +606,7 @@ gh skill install mpyw/declscope
 - **`//declscope:namespace` は package 節の前に書く。** 後ろに置くと黙って無効になる。何をしても診断が動かないときは，まず配置を疑え
 - **設定はリポジトリオーナーの決定であって，エージェントが決めることではない。** 設定ファイルを書く前に聞いて，答えを待て
 
-作業の順序も書いてあります。**`boundary` を先に，それも広げるのではなく境界を動かして片付けろ。そして測り直せ。** `boundary` を潰す過程で 2 つの namespace が 1 つに統合されると `ondemand` の条件から外れるので，`qualify` の指摘が連鎖的に消えることがあるからです。逆順にやると，消えるはずの指摘をリネームして回る羽目になります。`boundary` が片付いたら，`surplus: strict` と `unused: strict` を提案するところまで書いてあります。
+作業の順序も書いてあります。**`boundary` を先に，それも広げるのではなく境界を動かして片付けろ。そして測り直せ。** `boundary` を潰す過程で 2 つの namespace が 1 つに統合されると `ondemand` の条件から外れるので，`qualify` の指摘が連鎖的に消えることがあるからです。逆順にやると，消えるはずの指摘をリネームして回る羽目になります。
 
 # 限界
 
@@ -722,7 +628,6 @@ declscope は **1 度に 1 パッケージだけを読み，名前が綴られ�
 - **AI エージェントはその規約を知らないし，人間が書いていた頃より桁違いの速度で違反を犯してくる。** 自然言語の規約は，決定論的に判定できない以上どうしても確率的にしか効かない
 - **declscope は，パッケージをフラットに保ったまま，その規約を決定論的に検査する。** 越境には「境界を守る」か「意図的な共有だと宣言する」かの 2 つの答えが必ずある
 - **`qualify` も ON にするのがおすすめ。** ただしその指摘は「名前を変えろ」ではなく「そのファイルは，それを宣言する場所として妥当か？」を問うている
-- **`surplus` と `unused` も `strict` がおすすめ。** 他から使われていない共有と，何も決めていないディレクティブを 1 つずつ洗い出し，`-fix` で片付けられる
 - **`internal/` の Exported な宣言は `declscope shrink` で絞れる。** 通常の解析より先に実行し，unexport した宣言にも `boundary` を効かせる
 - **AI 時代に必要なのは，判断を記録すること。** ディレクティブは人間が下した判断の永続的な記録になり，次のエージェントはそれを導出し直さずに継承する
 - **導入手順そのものも skill として同梱した。** エージェントが読む前提の手順書を作者が書いて配れる時代になった
