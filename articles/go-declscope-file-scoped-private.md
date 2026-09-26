@@ -185,7 +185,7 @@ func normalizeEmail(s string) string {
 `boundary` の `-fix` は常に広げる方向にしか働きません。ツールが機械的に適用できる修正がそれしかないからです。**どこに置くべきかという判断こそ，AI エージェントにやらせたいところ** です。
 :::
 
-# 知っておく必要があるのは 2 つだけ
+# 名前空間が論理的構成単位
 
 ## ファイル名が namespace
 
@@ -240,7 +240,7 @@ client.go:4:6: func doSomething is private to the core namespace, but is used fr
 
 既定では Exported なものが `package`，それ以外が `private` です。
 
-# ルールは 6 つ
+# 境界ルールと命名ルール
 
 | ルール | 何を問うか | 既定 |
 |:---|:---|:---|
