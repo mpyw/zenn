@@ -195,7 +195,7 @@ func normalizeEmail(s string) string {
 `*_test.go` や `*_windows.go` `*_darwin.go` などの Go の慣習に従うサフィックスは除外されます。
 :::
 
-1 つの単位が複数ファイルにまたがる場合は，package 節の前にディレクティブを書いて **共有 namespace** に参加させます。
+1 つの単位が複数ファイルにまたがる場合は，package 節の前にディレクティブを書いて **明示的に命名された namespace** に参加させます。
 
 ```go:user_repository.go
 //declscope:namespace user
