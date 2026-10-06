@@ -162,7 +162,7 @@ order_repository.go:21:20:      used here, in namespace "orderRepository"
 | 答え | やり方 |
 |:---|:---|
 | 境界を守る | 呼び出しを namespace の内側に移す |
-| 意図的に共有する | `//declscope:package` を書く。 `-fix` が挿入してくれる |
+| 意図的に共有する | `//declscope:shared` を書く。 `-fix` が挿入してくれる |
 
 今回はどちらでしょうか。メールアドレスの正規化は，どちらのリポジトリのものでもありません。となると本当にやりたいのは **第三の場所への切り出し** — `email.go` を作ってそこに移すこと，のはずです。
 
@@ -171,7 +171,7 @@ order_repository.go:21:20:      used here, in namespace "orderRepository"
 ```go:email.go
 package database
 
-//declscope:package
+//declscope:shared
 func normalizeEmail(s string) string {
     return strings.ToLower(strings.TrimSpace(s))
 }
@@ -180,7 +180,7 @@ func normalizeEmail(s string) string {
 この 1 行が **「これは共有物である」という宣言** としてソースに残ります。次にこのファイルを開いた人間もエージェントも，それを最初に読みます。
 
 :::message
-`//declscope:package` は `-fix` でも挿入できますが，**今回のケースでは使いません。** `-fix` ができるのは宣言をその場で広げることだけで，ファイルを跨いで動かすことはできないからです。任せると `normalizeEmail` は `user_repository.go` に残ったまま共有物になります。
+`//declscope:shared` は `-fix` でも挿入できますが，**今回のケースでは使いません。** `-fix` ができるのは宣言をその場で広げることだけで，ファイルを跨いで動かすことはできないからです。任せると `normalizeEmail` は `user_repository.go` に残ったまま共有物になります。
 
 `boundary` の `-fix` は常に広げる方向にしか働きません。ツールが機械的に適用できる修正がそれしかないからです。**どこに置くべきかという判断こそ，AI エージェントにやらせたいところ** です。
 :::
@@ -229,16 +229,16 @@ client.go:4:6: func doSomething is private to the core namespace, but is used fr
  core に入れたファイル同士は 1 つの namespace を共有するので，互いの private な宣言に触れるようになります。何でも core に放り込むと，そこだけフラットなパッケージに戻るので，濫用にご注意ください。
 :::
 
-## scope は `package` と `private` の 2 つだけ
+## scope は `shared` と `private` の 2 つだけ
 
 | scope | 意味 | Rust での相当物 |
 |:---|:---|:---|
-| `package` | パッケージ内のどこからでも使える | `pub(super)` |
+| `shared` | パッケージ内のどこからでも使える | `pub(super)` |
 | `private` | 自分の namespace の中でだけ使える | 修飾子なし |
 
 `public` はありません。Go は既にそれを大文字で綴っていますし，パッケージの外側での使用は declscope の調査対象外です。
 
-既定では Exported なものが `package`，それ以外が `private` です。
+既定では Exported なものが `shared`，それ以外が `private` です。
 
 # 境界ルールと命名ルール
 
@@ -422,7 +422,7 @@ package database
 ```go:email.go
 package database
 
-//declscope:package
+//declscope:shared
 func normalizeEmail(s string) string {
     return strings.ToLower(strings.TrimSpace(s))
 }
@@ -455,7 +455,7 @@ rules:
 
 ## `overexported` ルールと `declscope shrink` サブコマンド
 
-Exported な宣言は既定で `package` スコープなので，`boundary` の対象になりません。つまり **Exported である必要のない名前は，それだけであらゆる検査をすり抜けます。**
+Exported な宣言は既定で `shared` スコープなので，`boundary` の対象になりません。つまり **Exported である必要のない名前は，それだけであらゆる検査をすり抜けます。**
 
 *「本当にこの Export いるんだっけ？」*
 
@@ -493,7 +493,7 @@ internal/user/user.go:8:6: func Format is exported, but nothing outside example.
 +func format(id int) string { return fmt.Sprint(id) }
 ```
 
-unexport された宣言は namespace の `private` になり，ここから `boundary` の検査が効き始めます。**`shrink` は通常の解析より先に実行してください。** 別の namespace から使われていれば，続く `declscope -fix` がそれを `//declscope:package` で明示します。CI でもこの順に並べます。
+unexport された宣言は namespace の `private` になり，ここから `boundary` の検査が効き始めます。**`shrink` は通常の解析より先に実行してください。** 別の namespace から使われていれば，続く `declscope -fix` がそれを `//declscope:shared` で明示します。CI でもこの順に並べます。
 
 ```console
 $ declscope shrink -fix ./...
@@ -588,7 +588,7 @@ genBashComp // V2
 | 診断が越えた namespace を名指しする | なぜその使用が間違いなのかが伝わり，修復が機械的になる |
 | ディレクティブが意図の永続的な記録になる | 次のエージェントは，判断を導出し直さずに継承する |
 
-2 つ目が個人的には本命です。「このヘルパーは共有していい」という判断は，これまでレビューのコメント欄か，人間の記憶の中で消えていきました。declscope ではそれが `//declscope:package` という 1 行でソースに残り，**次にそのファイルを開いたエージェントが最初に読むもの** になります。
+2 つ目が個人的には本命です。「このヘルパーは共有していい」という判断は，これまでレビューのコメント欄か，人間の記憶の中で消えていきました。declscope ではそれが `//declscope:shared` という 1 行でソースに残り，**次にそのファイルを開いたエージェントが最初に読むもの** になります。
 
 ## 導入作業の知識も skill として同梱している
 

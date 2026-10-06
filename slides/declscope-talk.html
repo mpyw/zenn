@@ -1276,7 +1276,7 @@
           <table>
             <tbody>
               <tr><td><code>private</code></td><td>自分の namespace</td></tr>
-              <tr><td><code>package</code></td><td>package 内のどこでも</td></tr>
+              <tr><td><code>shared</code></td><td>package 内のどこでも</td></tr>
             </tbody>
           </table>
           <p class="small muted" style="margin-top:14px">public は Go の Exported がすでに担当。</p>
@@ -1299,7 +1299,7 @@
         <div class="card coral">
           <span class="big-number" style="color:var(--coral)">B</span>
           <h3>共有を宣言する</h3>
-          <pre><span class="code-good">//declscope:package</span>
+          <pre><span class="code-good">//declscope:shared</span>
 func normalizeEmail(s string) string</pre>
         </div>
       </div>
@@ -1392,7 +1392,7 @@ gen<span class="code-good">Bash</span>Comp <span class="code-comment">// V2</spa
         <div class="flow-arrow">→</div>
         <div class="source">
           <strong>source code</strong>
-          <code>//declscope:package</code>
+          <code>//declscope:shared</code>
           <code>//declscope:namespace user</code>
           <span class="source-caption">診断・ディレクティブ・導入 skill</span>
         </div>
