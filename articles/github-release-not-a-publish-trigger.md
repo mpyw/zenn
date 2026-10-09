@@ -353,23 +353,54 @@ sequenceDiagram
 
 #### [`release-npm.yml`](https://github.com/mpyw/suve/blob/main/.github/workflows/release-npm.yml)：完成済み Release を NPM へミラーする
 
-NPM への公開は，さらに独立した `release-npm.yml` が担当します。
+NPM への公開は `release-npm.yml` が担当します。`release.yml` が GitHub Release・Homebrew・Scoop の後に `workflow_call` で呼び出すため，`tag_and_release.yml` を 1 回起動すれば NPM まで届きます。NPM だけをやり直したいときは，`release-npm.yml` 単体を `workflow_dispatch` で起動します。
 
 1. 対象の GitHub Release が存在することを確認する。
-2. `gh release download` で Release のアーカイブを取得する。
-3. OIDC の Trusted Publishing で `npm publish` する。
+2. 全パッケージの Trusted Publishing 設定を確認する（後述）。
+3. `gh release download` で Release のアーカイブを取得する。
+4. OIDC の Trusted Publishing で `npm publish` する。
 
 ここで NPM 用パッケージをゼロからビルドし直すのではなく，**カノニカルな GitHub Release のアーカイブを取得して再パッケージ** します。そのため NPM は二次的なミラーという位置付けです。認証はトークンレスで，Provenance も自動付与されます。
 
-そして `release-npm.yml` は，あえて `workflow_call` に対応させず **`workflow_dispatch` 専用** にしています。これは単なる好みではありません。
+ただし，再利用ワークフローから `npm publish` するには注意点があります。
 
 :::message alert
-NPM Trusted Publishing の OIDC クレームは，publish を実行する再利用ワークフローではなく **起点となったワークフロー名** を参照します。
+NPM Trusted Publishing の OIDC クレームは，publish を実行する再利用ワークフローではなく **起点となったワークフロー名** を参照します。`release-npm.yml` が `release.yml` から呼ばれた場合，NPM が照合するのは `release-npm.yml` ではなく，最初に起動された `tag_and_release.yml` や `release.yml` です。
 
-`release-npm.yml` 自身を独立した `workflow_dispatch` にしておけば，NPM 側の Trusted Publisher 設定へ登録するファイル名と，OIDC クレーム上の起点が一致します。この制約を，ワークフロー構造そのもので回避しているわけです。
+そのため **NPM に到達しうる起点のワークフローを，すべて Trusted Publisher に登録** しています。
 :::
 
-`suve` では，タグ作成，バイナリ入り Release 作成，NPM へのミラーのどれも，Release 公開イベントへ暗黙的に連鎖させていません。**すべて明示的な `workflow_dispatch` から動かし，カノニカルな成果物を確認して次へ進む。** Release 本体型における責務と順序が，そのままワークフロー分割へ現れています。
+| 起点のワークフロー | 用途 |
+|:--|:--|
+| `tag_and_release.yml` | 通常のリリース |
+| `release.yml` | タグ作成済みのバージョンを Release から進める |
+| `release-npm.yml` | NPM へのミラーだけをやり直す |
+
+:::message
+**【2026-10-09 追記】** 2026 年 9 月から，1 パッケージに複数の Trusted Publisher を登録できるようになりました。それ以前は 1 つしか登録できなかったため，`release-npm.yml` を `workflow_dispatch` 専用にして起点のファイル名を 1 つに固定し，NPM への公開だけは人間が別途起動していました。
+:::
+
+`suve` では，タグ作成，バイナリ入り Release 作成，NPM へのミラーのどれも，Release 公開イベントへ暗黙的に連鎖させていません。**人間が起動した `workflow_dispatch` の中で，カノニカルな成果物を確認して次へ進む。** Release 本体型における責務と順序が，そのままワークフロー分割へ現れています。
+
+#### Trusted Publishing の設定を publish せずに確かめる
+
+`suve` は 7 つの NPM パッケージを順番に publish します。Trusted Publisher の登録が 1 つでも誤っていれば途中で止まり，一部のパッケージだけが公開された状態になってしまいます。
+
+そこで `release-npm.yml` は，publish の前に全パッケージについて **OIDC トークンの交換だけ** を試します。`npm publish` が内部でアップロード前に行っている交換と同じ処理で，登録が合っていなければここで失敗します。このために作った Action が以下です。
+
+https://github.com/mpyw/npm-oidc-check-action
+
+:::message alert
+`npm publish --dry-run` も交換自体は行います。しかし **交換に失敗しても dry-run は成功してしまう** ため，設定の確認には使えません。
+:::
+
+さらに各起点のワークフローには `check_only` 入力を足してあり，タグ作成・ビルド・publish を一切せずに，その起点の登録だけを確認できます。
+
+```bash
+for f in tag_and_release.yml release.yml release-npm.yml; do
+    gh workflow run "$f" -f check_only=true
+done
+```
 
 ## パターン 3：タグ本体型（Packagist / Go Modules）
 
@@ -557,6 +588,7 @@ NPM に載ったパッケージはゴミではありません。カノニカル�
 この領域を縮める方法も，DB のトランザクション設計と同じです。**不可逆コミットより前へ落とせる検証は，すべて前へ落とせ。**
 
 - `npm publish --dry-run` 相当の検証を先に実行する。
+- Trusted Publishing の設定を，OIDC トークンの交換だけで先に確かめる（`--dry-run` では確かめられません）。
 - ビルドを publish より前に完了させる。
 - スモークテストを publish より前に通す。
 
@@ -584,6 +616,8 @@ https://docs.github.com/en/code-security/concepts/supply-chain-security/immutabl
 https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/
 
 https://docs.npmjs.com/trusted-publishers/
+
+https://github.blog/changelog/2026-09-03-multiple-trusted-publishing-configurations-for-npm/
 
 https://docs.npmjs.com/generating-provenance-statements/
 
