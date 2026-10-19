@@ -227,7 +227,7 @@ Claude は `inspect_label` でファイルの中身を読んでから `edit_labe
 TEPRA LINK 2 は iOS / Android に加えて，一応 macOS 版も提供されています。
 
 :::message alert
-**筆者の環境では， macOS 版 TEPRA LINK 2 と手持ちの SR-MK2 の Bluetooth 接続がうまくいきませんでした。** そのため macOS 版は印刷には使わず，プレビュー専用として使っています。
+**macOS 版 TEPRA LINK 2 は，筆者の手持ちの SR-MK1 に対応していません。** [公式の対応表](https://www.kingjim.co.jp/sp/tepra_link2/manual/02_00.html) でも SR-MK1 はスマートフォンからの Bluetooth 接続のみで， Mac からは Bluetooth でも USB でも接続できません。そのため macOS 版は印刷には使わず，プレビュー専用として使っています。
 :::
 
 印刷はできなくても， macOS 版を入れておく価値は十分にあります。 **TEPRA LINK 2 をインストールすると， Finder のクイックルックで `.tm2` ファイルの中身をプレビューできるようになる** のです。
