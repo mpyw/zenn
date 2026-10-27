@@ -127,7 +127,30 @@ URL を QR コードにした流し込みラベルです。アプリの表でデ
 
 # インストール
 
-## tm2 コマンドのインストール
+使っているアプリに合わせて，どちらかの方法で入れてください。
+
+| 方法 | 向いている人 | 必要なもの |
+|:---|:---|:---|
+| Claude Desktop に拡張機能として入れる | 非エンジニア。ターミナルを使ったことがない人 | macOS か Windows の Claude Desktop |
+| tm2 コマンドを入れて MCP サーバーとして登録する | エンジニア。 Claude Code や他の MCP クライアントで使いたい人 | ターミナル |
+
+## 非エンジニア向け： Claude Desktop
+
+Claude Desktop 向けに，ダウンロードして開くだけで入る拡張機能（ `.mcpb` ファイル）を用意しています。ターミナルでの操作や，他のソフトのインストールは要りません。
+
+1. [`tm2.mcpb`](https://github.com/mpyw/tepra.tm2/releases/latest/download/tm2.mcpb) をダウンロードする
+2. ダウンロードした `tm2.mcpb` を開く（ダブルクリック）
+3. Claude Desktop にインストールの確認が出るので，インストールする
+
+これで準備は完了です。 Claude Desktop のチャットで「テプラのラベルを作って」と頼めば使えます。
+
+:::message
+拡張機能が使えるのは **Claude Desktop のチャット** だけです。 Claude Desktop の Code タブは中で Claude Code が動いていて，そのセッションには追加されません。 Code タブで使いたい場合は，次のエンジニア向けの方法で入れてください。
+:::
+
+## エンジニア向け： Claude Code や他の MCP クライアント
+
+### tm2 コマンドのインストール
 
 [mise](https://mise.jdx.dev/) を使う方法がおすすめです。
 
@@ -143,7 +166,7 @@ Go の環境がある場合は `go install` でも入ります。
 go install github.com/mpyw/tepra.tm2/cmd/tm2@latest
 ```
 
-## MCP サーバーの登録
+### MCP サーバーの登録
 
 Claude Code の場合は，以下のコマンドで登録できます。
 
@@ -151,13 +174,13 @@ Claude Code の場合は，以下のコマンドで登録できます。
 claude mcp add tm2 -- tm2 mcp
 ```
 
-Claude Desktop など他の MCP クライアントでも，コマンド `tm2` ・引数 `mcp` の stdio サーバーとして登録すれば使えます。
+他の MCP クライアントでも，引数 `mcp` の stdio サーバーとして登録すれば使えます。クライアントによってはシェルの `PATH` を引き継がないので，コマンドは `tm2` の絶対パスで書いておくと確実です（ `which tm2` で確認できます）。
 
 ```json
 {
     "mcpServers": {
         "tm2": {
-            "command": "tm2",
+            "command": "/absolute/path/to/tm2",
             "args": ["mcp"]
         }
     }
