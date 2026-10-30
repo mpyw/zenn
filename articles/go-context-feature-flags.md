@@ -105,7 +105,7 @@ Go でフィーチャーフラグといえばこういうライブラリも出�
 
 https://github.com/golang/go/issues/49189
 
-2021 年 10 月に [`@dsnet`](https://github.com/dsnet) 氏が提案したもので，まさに求めていたものなんですが，**3 年以上 Hold 状態のまま** です。
+2021 年 10 月に [`@dsnet`](https://github.com/dsnet) 氏が提案したもので，まさに求めていたものなんですが，**4 年以上 Hold 状態のまま** です。
 
 ## Proposal の内容
 
@@ -171,21 +171,22 @@ Issue のコメント欄では別のアプローチも提案されています�
 
 ## なぜ Hold なのか
 
-Joe Tsai 氏（[`@dsnet`](https://github.com/dsnet)）は Go 開発チームのメンバーであり，実装の筋もいいです。実際 Issue を追っても，この案自体への技術的な反対意見は少ないことがわかります。 Hold になっている主な理由は **標準ライブラリへのジェネリクス導入方針が未確定** だからです。
+Joe Tsai 氏（[`@dsnet`](https://github.com/dsnet)）は Go 開発チームのメンバーであり，実装の筋もいいです。実際 Issue を追っても，この案自体への技術的な反対意見は少ないことがわかります。 Hold にした際の公式コメントは [「On hold for understanding generics better.」](https://github.com/golang/go/issues/49189#issuecomment-959782587) の一言だけで，その後 Go チームから方針が示されたことはありません。
 
-1. **標準ライブラリのジェネリクス対応方針が決まっていない**
-   - [Discussion #48287](https://github.com/golang/go/discussions/48287) で「既存 API をどうジェネリクス対応するか」が議論中
-   - `context/v2` のような新パッケージを作るか，既存パッケージに追加するか，方針が定まっていない
+1. **ジェネリクス導入直後で，標準ライブラリでの使い方が固まっていなかった**
+   - Hold になった 2021 年 11 月は Go 1.18 のリリース前で，[Discussion #48287](https://github.com/golang/go/discussions/48287) で「既存 API をどうジェネリクス対応するか」が議論されていた
+   - この Discussion は 2023 年 4 月に Close されたが， `context` をどうするかの結論は出ていない
+   - その後の標準ライブラリでは [`math/rand/v2`](https://pkg.go.dev/math/rand/v2) のように `/v2` パッケージを切る例も出ているが， `context` に当てはめるかどうかは決まっていない
 
 2. **既存 API との共存問題**
    - [`context.WithValue`](https://pkg.go.dev/context#WithValue) / [`context.Value`](https://pkg.go.dev/context#Value) は残すのか， Deprecated にするのか
    - 移行パスをどう設計するか
 
-3. **代替案との比較検討**
-   - [`@neild` 案](https://github.com/golang/go/issues/49189#issuecomment-953367396) は「同じ型の値を複数持てない」という致命的問題がある
-   - しかし Go チームは複数案を並行して検討しており，結論を急いでいない
+3. **標準ライブラリの外で実装できる**
+   - 類似の [#57025](https://github.com/golang/go/issues/57025) では [`@ianlancetaylor`](https://github.com/ianlancetaylor) 氏が [「標準ライブラリの外で実装できるので，まずは外部パッケージとして広く使われてから検討すればよい」](https://github.com/golang/go/issues/57025#issuecomment-1382220573) という趣旨のコメントをしており， #57025 はその後取り下げられた
+   - [`@dsnet`](https://github.com/dsnet) 氏自身も [`tailscale.com/util/ctxkey`](https://pkg.go.dev/tailscale.com/util/ctxkey) を [紹介](https://github.com/golang/go/issues/49189#issuecomment-2066946903) しているが， API 互換性は保証しないとのこと
 
-要するに，**「この Proposal がダメ」というより「標準ライブラリ全体のジェネリクス対応方針が決まるまで待ち」** という状態です。
+要するに，**「この Proposal がダメ」というより「急いで標準ライブラリに入れる理由がないまま止まっている」** という状態です。
 
 ## 各アプローチの比較
 
